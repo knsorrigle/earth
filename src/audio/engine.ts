@@ -40,6 +40,8 @@ export function softClip(x: number, ceiling = OUTPUT_CEILING): number {
 export class AudioEngine {
   private initPromise: Promise<void> | null = null;
   private limiter!: Tone.Limiter;
+  /** Spectrum tap after the limiter, before the user's volume/mute, so visuals show the music even when muted. */
+  private fft!: Tone.FFT;
   private clipper!: Tone.WaveShaper;
   private clipPreGain!: Tone.Gain;
   private master!: Tone.Gain;
@@ -99,6 +101,8 @@ export class AudioEngine {
     this.clipper.oversample = '2x';
     this.clipPreGain = new Tone.Gain(1 / CLIP_RANGE).connect(this.clipper);
     this.limiter = new Tone.Limiter(-3).connect(this.clipPreGain);
+    this.fft = new Tone.FFT({ size: 1024, smoothing: 0.4 });
+    this.limiter.connect(this.fft);
     this.master = new Tone.Gain(1).connect(this.limiter);
     this.reverb = new Tone.Reverb({ decay: 4.5, preDelay: 0.03, wet: 0.28 }).connect(this.master);
     await this.reverb.ready;
@@ -179,6 +183,15 @@ export class AudioEngine {
       volume: -8,
     }).connect(this.crackleFilter);
     this.built = true;
+  }
+
+  /** Current dB spectrum (bins evenly spaced up to nyquist), or null before the audio starts. */
+  getSpectrum(): Float32Array | null {
+    return this.ready ? this.fft.getValue() : null;
+  }
+
+  get nyquist(): number {
+    return Tone.getContext().sampleRate / 2;
   }
 
   /** One scanner note at an exact (scheduled) time. */
@@ -361,7 +374,7 @@ export class AudioEngine {
     [this.droneLow, this.droneHigh, this.droneFilter, this.droneGain, this.melody, this.melodyFilter,
       this.melodyPanner, this.duetSynth, this.duetFilter, this.duetPanner, this.exploreSynth, this.exploreFilter, this.explorePanner, this.landNoise, this.landFilter, this.landGain,
       this.landPanner, this.scanSynth, this.scanFilter, this.scanPanner, this.crackle, this.crackleFilter, this.cracklePanner, this.channels.melody, this.channels.drone,
-      this.channels.explore, this.channels.scanner, this.channels.duet, this.reverb, this.master, this.limiter, this.clipPreGain, this.clipper].forEach((n) => n.dispose());
+      this.channels.explore, this.channels.scanner, this.channels.duet, this.reverb, this.master, this.limiter, this.fft, this.clipPreGain, this.clipper].forEach((n) => n.dispose());
     this.built = false;
     this.initPromise = null;
   }

@@ -105,3 +105,50 @@ export const rippleFragment = /* glsl */ `
     #include <colorspace_fragment>
   }
 `;
+
+/**
+ * Spectrum ring: a halo of N bars facing the viewer. It is mirrored: bars rise
+ * from the bottom (lowest frequencies, warm) up both sides to the top (highest,
+ * cool), so position on the ring always means pitch. Only uMags changes per frame.
+ */
+export const spectrumVertex = /* glsl */ `
+  #define N_BARS 96
+  #define HALF 48
+  attribute float aBar;   // bar index 0..N_BARS-1
+  attribute vec2 aCorner; // x: -1/1 across the bar, y: 0 inner / 1 outer
+  uniform float uMags[HALF];
+  uniform float uInner;
+  uniform float uLength;
+  uniform float uWidth;
+  varying float vMag;
+  varying float vT;
+  varying float vY;
+  void main() {
+    int k = aBar < float(HALF) ? int(aBar) : int(float(N_BARS) - 1.0 - aBar);
+    float mag = uMags[k];
+    float ang = -1.5707963 + (aBar + 0.5) / float(N_BARS) * 6.2831853;
+    vec2 dir = vec2(cos(ang), sin(ang));
+    vec2 side = vec2(-dir.y, dir.x);
+    float r = uInner + aCorner.y * (0.006 + mag * uLength);
+    vec2 p = dir * r + side * aCorner.x * uWidth * 0.5;
+    vMag = mag;
+    vT = float(k) / float(HALF - 1);
+    vY = aCorner.y;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 0.0, 1.0);
+  }
+`;
+
+export const spectrumFragment = /* glsl */ `
+  uniform vec3 uLow;
+  uniform vec3 uHigh;
+  varying float vMag;
+  varying float vT;
+  varying float vY;
+  void main() {
+    vec3 col = mix(uLow, uHigh, vT);
+    // Brighter with level, fading toward the outer tip.
+    float a = (0.1 + 0.9 * vMag) * (1.0 - 0.6 * vY);
+    gl_FragColor = vec4(col * a, a);
+    #include <colorspace_fragment>
+  }
+`;

@@ -13,6 +13,7 @@ import { usePlayerStore } from '../../state/playerStore';
 import { useGibsFrame } from '../map/useGibsFrame';
 import { Hud } from '../hud/Hud';
 import { Ripples } from './Ripples';
+import { SpectrumRing } from './SpectrumRing';
 
 const FADE_MS = 900;
 const RIM = new Color('#7cc8ff');
@@ -96,7 +97,7 @@ function Globe({ bitmap, underlay, reduced, faceLon }: { bitmap: ImageBitmap | n
   );
 }
 
-const BASE_DISTANCE = 3.9;
+const BASE_DISTANCE = 4.6;
 const FOV = 36;
 
 /** Keep the whole globe (plus halo) in view on narrow, portrait stages. */
@@ -105,7 +106,7 @@ function FitCamera() {
   useEffect(() => {
     const aspect = size.width / Math.max(1, size.height);
     const halfV = Math.tan(((FOV / 2) * Math.PI) / 180);
-    const needed = 1.2 / (halfV * Math.min(1, aspect)); // 1.2 ≈ globe + halo, with a little margin
+    const needed = 1.5 / (halfV * Math.min(1, aspect)); // 1.5 ≈ globe + spectrum halo, with a little margin
     camera.position.setLength(Math.max(BASE_DISTANCE, needed));
     invalidate();
   }, [camera, size, invalidate]);
@@ -176,7 +177,7 @@ export default function GlobeStage() {
             flat
             dpr={dpr}
             frameloop={rotating ? 'always' : 'demand'}
-            camera={{ position: [0, 0.9, BASE_DISTANCE], fov: FOV, near: 0.1, far: 200 }}
+            camera={{ position: [0, 1.05, BASE_DISTANCE], fov: FOV, near: 0.1, far: 200 }}
             gl={{ antialias: true, powerPreference: 'high-performance', alpha: false }}
             fallback={null}
           >
@@ -194,6 +195,8 @@ export default function GlobeStage() {
             <Stars radius={80} depth={40} count={1400} factor={3} saturation={0} fade speed={0} />
             <Globe bitmap={frame.bitmap} underlay={frame.underlay} reduced={reduced} faceLon={-40} />
             <Atmosphere />
+            {/* Live spectrum; off under reduced motion (it flickers with every sound). */}
+            {!reduced && <SpectrumRing />}
             <OrbitControls
               enablePan={false}
               enableDamping

@@ -49,6 +49,15 @@ so a note costs a few attribute writes. Colours come from the GIBS colormap bin 
 (time series). A missing coordinate means "anywhere along it" (pan-Arctic sea ice, global temperature) and is filled
 from the point facing the viewer. No ripples before an Ear Test answer (they'd give it away), none under reduced motion.
 
+## Spectrum ring (Phase 6, step 4)
+
+A `Tone.FFT` (1024 bins) taps the mix after the limiter — before the user's volume and mute, so the ring keeps
+showing the music for deaf and hard-of-hearing users even when muted. `src/audio/spectrum.ts` (pure, tested) groups
+the FFT into 48 log-spaced bands (60 Hz – 8 kHz), maps −95…−35 dB to 0…1 and smooths with fast attack / slow release.
+The ring is a camera-facing halo of 96 bars, mirrored: lowest frequencies at the bottom (warm), highest at the top
+(cool), so position on the ring means pitch. One mesh; only a 48-float uniform changes per frame. Silent audio = a
+faint still baseline; when the globe is paused the canvas redraws only while there is sound. Off under reduced motion.
+
 ## Modes
 
 - **Timeline:** one note per year; pitch = value; a hum tuned to the reference year.
