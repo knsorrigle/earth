@@ -1,0 +1,106 @@
+import { useEffect } from 'react';
+import { usePlayerStore } from '../state/playerStore';
+import type { PlayerApi } from './usePlayer';
+
+const TEMPO_STEP = 10;
+
+export const SHORTCUTS: { keys: string; action: string }[] = [
+  { keys: 'Space or K', action: 'Play / pause' },
+  { keys: '← / →', action: 'Previous / next year' },
+  { keys: 'Shift + ← / →', action: 'Jump 10 years' },
+  { keys: 'Home / End', action: 'First / last year' },
+  { keys: '+ / −', action: 'Faster / slower' },
+  { keys: 'I', action: 'Say where I am' },
+  { keys: 'L', action: 'Say what the sounds mean' },
+  { keys: 'D', action: 'Reference hum on / off' },
+  { keys: 'M', action: 'Mute / unmute' },
+];
+
+/**
+ * Global keyboard control. Keys that a focused control already handles
+ * natively (Space on buttons, arrows on sliders/selects, typing in text
+ * fields) are left alone so standard behaviour is never broken.
+ */
+export function useKeyboardShortcuts(api: PlayerApi) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      const tag = t?.tagName ?? '';
+      const type = tag === 'INPUT' ? (t as HTMLInputElement).type : '';
+      const isTextEntry =
+        tag === 'TEXTAREA' || (tag === 'INPUT' && !['range', 'checkbox', 'radio', 'button'].includes(type)) || !!t?.isContentEditable;
+      if (isTextEntry) return;
+      const activatesNatively = ['BUTTON', 'SELECT', 'SUMMARY', 'A'].includes(tag) || ['checkbox', 'radio', 'button'].includes(type);
+      const arrowsNatively = tag === 'SELECT' || type === 'range';
+
+      const s = usePlayerStore.getState();
+      const len = api.events.length;
+      switch (e.key) {
+        case ' ':
+          if (activatesNatively) return;
+          e.preventDefault();
+          api.toggle();
+          break;
+        case 'k':
+        case 'K':
+          api.toggle();
+          break;
+        case 'ArrowRight':
+        case 'ArrowUp':
+          if (arrowsNatively) return;
+          e.preventDefault();
+          api.step(e.shiftKey ? 10 : 1);
+          break;
+        case 'ArrowLeft':
+        case 'ArrowDown':
+          if (arrowsNatively) return;
+          e.preventDefault();
+          api.step(e.shiftKey ? -10 : -1);
+          break;
+        case 'Home':
+          if (arrowsNatively) return;
+          e.preventDefault();
+          void api.seek(0);
+          break;
+        case 'End':
+          if (arrowsNatively) return;
+          e.preventDefault();
+          void api.seek(len - 1);
+          break;
+        case '+':
+        case '=':
+          s.setBpm(s.bpm + TEMPO_STEP);
+          s.announce(`Tempo ${usePlayerStore.getState().bpm} beats per minute`);
+          break;
+        case '-':
+        case '_':
+          s.setBpm(s.bpm - TEMPO_STEP);
+          s.announce(`Tempo ${usePlayerStore.getState().bpm} beats per minute`);
+          break;
+        case 'd':
+        case 'D':
+          s.setDroneEnabled(!s.droneEnabled);
+          s.announce(`Reference hum ${!s.droneEnabled ? 'on' : 'off'}`);
+          break;
+        case 'm':
+        case 'M':
+          s.setMuted(!s.muted);
+          s.announce(!s.muted ? 'Muted' : 'Sound on');
+          break;
+        case 'l':
+        case 'L':
+          api.speakLegend();
+          break;
+        case 'i':
+        case 'I':
+          api.speakCurrent();
+          break;
+        default:
+          return;
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [api]);
+}
