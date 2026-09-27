@@ -12,6 +12,7 @@ import { hasWebGL } from '../../globe/webgl';
 import { usePlayerStore } from '../../state/playerStore';
 import { useGibsFrame } from '../map/useGibsFrame';
 import { Hud } from '../hud/Hud';
+import { Ripples } from './Ripples';
 
 const FADE_MS = 900;
 const RIM = new Color('#7cc8ff');
@@ -89,6 +90,8 @@ function Globe({ bitmap, underlay, reduced, faceLon }: { bitmap: ImageBitmap | n
   return (
     <mesh rotation={[0, rotationToFaceLon(faceLon), 0]} material={material}>
       <sphereGeometry args={[1, 128, 64]} />
+      {/* Ripples ride on the globe. None under reduced motion: every note still has sound and a caption. */}
+      {!reduced && <Ripples />}
     </mesh>
   );
 }
@@ -173,7 +176,7 @@ export default function GlobeStage() {
             flat
             dpr={dpr}
             frameloop={rotating ? 'always' : 'demand'}
-            camera={{ position: [0, 0.45, BASE_DISTANCE], fov: FOV, near: 0.1, far: 200 }}
+            camera={{ position: [0, 0.9, BASE_DISTANCE], fov: FOV, near: 0.1, far: 200 }}
             gl={{ antialias: true, powerPreference: 'high-performance', alpha: false }}
             fallback={null}
           >

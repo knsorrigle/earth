@@ -9,6 +9,8 @@ import { formatLon, speakLon } from '../../sampling/geo';
 import { describeColumn, planScan } from '../../sampling/scan';
 import { SCAN_DURATIONS, usePlayerStore, type ScanDuration } from '../../state/playerStore';
 import type { GibsFrame } from '../map/useGibsFrame';
+import { noteBus } from '../../audio/noteBus';
+import { colormapColor, hexToRgb, type RGB } from '../../globe/colors';
 
 export const SCAN_COLUMNS = 72; // 5° per step
 export const SCAN_BANDS = 8; // 22.5° per band
@@ -26,6 +28,23 @@ export function useScanner(dataset: Dataset, frame: GibsFrame) {
   const dsRef = useRef(dataset);
   dsRef.current = dataset;
   const playStart = useRef(-1);
+  const frameRef = useRef(frame);
+  frameRef.current = frame;
+
+  /** One ripple per strummed band, at the band's centre latitude, following the strum timing. */
+  const emitColumn = (column: number, notes: ScanNote[]) => {
+    const p = planRef.current;
+    const f = frameRef.current;
+    if (!p || !f.grid) return;
+    const lon = p.columns[column].lon;
+    const fire: RGB | null = f.presence ? hexToRgb('#ec6210') : null;
+    for (const n of notes) {
+      const band = p.bands[n.band];
+      const lat = (band.north + band.south) / 2;
+      const color = fire ?? colormapColor(f.grid.colormap, n.value);
+      window.setTimeout(() => noteBus.emit({ lat, lon, color, velocity: n.velocity }), n.offset * 1000);
+    }
+  };
   const presenceRef = useRef(frame.presence);
   presenceRef.current = frame.presence;
 
@@ -51,6 +70,7 @@ export function useScanner(dataset: Dataset, frame: GibsFrame) {
         const s = usePlayerStore.getState();
         const p = planRef.current;
         if (!p) return;
+        emitColumn(column, notes);
         s.setScan({ column });
         setActive(notes);
         s.setCaption(caption(column, notes));
@@ -136,6 +156,7 @@ export function useScanner(dataset: Dataset, frame: GibsFrame) {
       if (s.scan.isScanning) return;
       await ensureAudio();
       const notes = scheduler.audition(c);
+      emitColumn(c, notes);
       setActive(notes);
       s.setCaption(caption(c, notes));
       if (opts.announce !== false) s.announce(describeColumn(p, c, dsRef.current.unitSpoken, dsRef.current.decimals, presenceRef.current));

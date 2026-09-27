@@ -14,3 +14,12 @@ export function rotationToFaceLon(lon: number): number {
   // latLonToXYZ puts lon = -90 at +Z; each degree east moves the point by -1° of rotation.
   return (-(lon + 90) * Math.PI) / 180;
 }
+
+/** Inverse of latLonToXYZ: a point (any radius) -> lat/lon in degrees. */
+export function xyzToLatLon(x: number, y: number, z: number): { lat: number; lon: number } {
+  const r = Math.hypot(x, y, z) || 1;
+  const lat = 90 - (Math.acos(Math.max(-1, Math.min(1, y / r))) * 180) / Math.PI;
+  let lon = (Math.atan2(z, -x) * 180) / Math.PI - 180;
+  if (lon < -180) lon += 360;
+  return { lat, lon };
+}

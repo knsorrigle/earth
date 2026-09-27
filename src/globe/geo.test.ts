@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SphereGeometry, Vector3 } from 'three';
-import { latLonToXYZ, rotationToFaceLon } from './geo';
+import { latLonToXYZ, rotationToFaceLon, xyzToLatLon } from './geo';
 
 describe('latLonToXYZ matches three.js SphereGeometry texture mapping', () => {
   const geo = new SphereGeometry(1, 36, 18);
@@ -31,6 +31,16 @@ describe('latLonToXYZ matches three.js SphereGeometry texture mapping', () => {
     for (const lon of [-150, -90, 0, 45, 170]) {
       const p = new Vector3(...latLonToXYZ(0, lon)).applyAxisAngle(new Vector3(0, 1, 0), rotationToFaceLon(lon));
       expect(p.z).toBeCloseTo(1);
+    }
+  });
+});
+
+describe('xyzToLatLon', () => {
+  it('inverts latLonToXYZ', () => {
+    for (const [lat, lon] of [[0, 0], [45, -120], [-60, 170], [10, -179], [89, 30]]) {
+      const back = xyzToLatLon(...latLonToXYZ(lat, lon, 3));
+      expect(back.lat).toBeCloseTo(lat, 6);
+      expect(back.lon).toBeCloseTo(lon, 6);
     }
   });
 });

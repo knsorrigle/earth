@@ -6,6 +6,8 @@ import { describeMapping } from '../mapping/legend';
 import type { NoteEvent } from '../mapping/types';
 import type { Dataset } from '../data/types';
 import { usePlayerStore } from '../state/playerStore';
+import { noteBus } from '../audio/noteBus';
+import { seriesVisual } from './globe/visuals';
 import { detailedAnnouncement, pointAnnouncement, relationToReference, shouldAnnounce } from './announce';
 
 /**
@@ -32,6 +34,8 @@ export function usePlayer(dataset: Dataset) {
   const referenceRef = useRef(reference);
   const unitRef = useRef(unit);
   const captionRef = useRef(caption);
+  const datasetRef = useRef(dataset);
+  datasetRef.current = dataset;
   eventsRef.current = events;
   referenceRef.current = reference;
   unitRef.current = unit;
@@ -44,6 +48,7 @@ export function usePlayer(dataset: Dataset) {
     }, {
       onStep: (ev) => {
         const s = usePlayerStore.getState();
+        noteBus.emit(seriesVisual(datasetRef.current, ev.value, ev.velocity));
         s.setIndex(ev.index);
         s.setCaption(captionRef.current(ev));
         if (shouldAnnounce(ev, s.announceEvery, eventsRef.current.length)) {
@@ -154,6 +159,7 @@ export function usePlayer(dataset: Dataset) {
       if (audition) {
         await ensureAudio();
         engine.playNote({ freq: ev.freq, velocity: ev.velocity, duration: 0.5 });
+        noteBus.emit(seriesVisual(dataset, ev.value, ev.velocity));
         engine.setDroneActive(true, 0.3);
         window.clearTimeout(droneHold.current);
         droneHold.current = window.setTimeout(() => {

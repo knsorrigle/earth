@@ -70,8 +70,16 @@ export interface Dataset {
   altText: string;
   /** How values become sound. */
   mapping: MappingConfig;
-  /** Where a time series was measured, for the HUD. */
-  place?: { label: string; spoken?: string };
+  /**
+   * Where a time series was measured, for the HUD and globe ripples.
+   * No lat/lon = a global quantity (ripples appear where the viewer is looking).
+   */
+  place?: { label: string; spoken?: string; lat?: number; lon?: number };
+  /**
+   * Colour scale for values of a time series (0 = domain start, 1 = domain end),
+   * used for ripples. Map layers use their GIBS colormap instead.
+   */
+  palette?: { t: number; color: string }[];
   /** Words for Ear Test questions: "Which year had more sea ice?" */
   compare?: {
     /** Lower-case subject: "Arctic sea ice". */

@@ -5,6 +5,8 @@ import type { Dataset } from '../../data/types';
 import { buildDuet, describeDuetMapping, DUET_OFFSET_BEATS, DUET_PAN, type DuetStep } from '../../mapping/duet';
 import type { NoteEvent, ReferenceTone } from '../../mapping/types';
 import { usePlayerStore } from '../../state/playerStore';
+import { noteBus } from '../../audio/noteBus';
+import { seriesVisual } from '../globe/visuals';
 import { relationToReference, shouldAnnounce } from '../announce';
 import type { TimelineControls } from '../usePlayer';
 
@@ -43,6 +45,8 @@ export function useDuet(dsA: Dataset, dsB: Dataset) {
   const shortRef = useRef(shortLine);
   const detailRef = useRef(detailLine);
   const captionRef = useRef(caption);
+  const dsRef = useRef({ a: dsA, b: dsB });
+  dsRef.current = { a: dsA, b: dsB };
   stepsRef.current = steps;
   shortRef.current = shortLine;
   detailRef.current = detailLine;
@@ -59,6 +63,10 @@ export function useDuet(dsA: Dataset, dsB: Dataset) {
       {
         onStep: (st) => {
           const s = usePlayerStore.getState();
+          noteBus.emit(seriesVisual(dsRef.current.a, st.a.value, st.a.velocity));
+          // The bell sounds half a beat after the mallet.
+          const halfBeat = (60 / s.bpm) * DUET_OFFSET_BEATS * 1000;
+          window.setTimeout(() => noteBus.emit(seriesVisual(dsRef.current.b, st.b.value, st.b.velocity)), halfBeat);
           s.setIndex(st.index);
           s.setCaption(captionRef.current(st));
           if (shouldAnnounce(st, s.announceEvery, stepsRef.current.length)) s.announce(shortRef.current(st));
@@ -152,8 +160,12 @@ export function useDuet(dsA: Dataset, dsB: Dataset) {
       if (audition) {
         await ensureAudio();
         engine.playNote({ freq: st.a.freq, velocity: st.a.velocity, duration: 0.5 });
+        noteBus.emit(seriesVisual(dsA, st.a.value, st.a.velocity));
         // B answers a moment after A, as in playback.
-        window.setTimeout(() => engine.playDuetNote({ freq: st.b.freq, velocity: st.b.velocity, duration: 0.5 }), 180);
+        window.setTimeout(() => {
+          engine.playDuetNote({ freq: st.b.freq, velocity: st.b.velocity, duration: 0.5 });
+          noteBus.emit(seriesVisual(dsB, st.b.value, st.b.velocity));
+        }, 180);
       }
     },
     [steps, scheduler, caption, shortLine, detailLine, ensureAudio],

@@ -40,6 +40,15 @@ groove heights are the yearly values; Duet = two interleaved grooves (A up, B do
 how many bands sound at each 5° column; Explore = a longitude tape; Ear Test = 8 result segments. The HUD is
 `aria-hidden` (its facts are already announced by the mode); **H** or the "Read HUD" button speaks all of it.
 
+## Note ripples (Phase 6, step 3)
+
+`src/audio/noteBus.ts` is a tiny pub/sub: every mode emits `{lat, lon, color, velocity}` at the moment a note is
+heard (from the Tone.Draw-synced step callbacks, with strum / half-beat offsets). The globe draws an expanding ring
+there: a pool of 64 instanced quads whose growth and fade (1.5 s) run in the shader from a per-instance start time,
+so a note costs a few attribute writes. Colours come from the GIBS colormap bin (map data) or the record's palette
+(time series). A missing coordinate means "anywhere along it" (pan-Arctic sea ice, global temperature) and is filled
+from the point facing the viewer. No ripples before an Ear Test answer (they'd give it away), none under reduced motion.
+
 ## Modes
 
 - **Timeline:** one note per year; pitch = value; a hum tuned to the reference year.

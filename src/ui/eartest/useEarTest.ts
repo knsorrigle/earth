@@ -19,6 +19,9 @@ import { OCEAN_REGIONS, regionMean } from '../../game/regions';
 import { midiToFreq } from '../../mapping/pitch';
 import { usePlayerStore, type EarDifficulty } from '../../state/playerStore';
 import type { GibsFrame } from '../map/useGibsFrame';
+import { noteBus } from '../../audio/noteBus';
+import { colormapColor } from '../../globe/colors';
+import { seriesVisual } from '../globe/visuals';
 
 export const ROUND_LENGTH = 8;
 const NOTES_PER_CLIP = 3;
@@ -243,6 +246,14 @@ export function useEarTest(sst: Dataset, frame: GibsFrame) {
       clearTimers();
       setPlaying(null);
       void ensureAudio().then(() => engine.playCue(right ? 'correct' : 'wrong'));
+      // Only now, after answering, show where the answer is on the globe.
+      const win = question.items[question.answer];
+      if (question.kind === 'region' && win.box && frame.grid) {
+        const [w, so, e, n] = win.box;
+        noteBus.emit({ lat: (so + n) / 2, lon: (w + e) / 2, color: colormapColor(frame.grid.colormap, win.value), velocity: 1 });
+      } else if (question.kind === 'timeline') {
+        noteBus.emit(seriesVisual(datasetOf(question), win.value, 1));
+      }
       const ds = datasetOf(question);
       const last = qNum >= ROUND_LENGTH;
       usePlayerStore
@@ -252,7 +263,7 @@ export function useEarTest(sst: Dataset, frame: GibsFrame) {
             `Score: ${scoreText(next)}. ${last ? 'Press Enter to see your results.' : 'Press Enter for the next question.'}`,
         );
     },
-    [phase, question, score, qNum, ensureAudio, datasetOf, wordsOf],
+    [phase, question, score, qNum, ensureAudio, datasetOf, wordsOf, frame.grid],
   );
 
   const next = useCallback(() => {

@@ -10,6 +10,8 @@ import { clampLat, sampleGrid, wrapLon } from '../../sampling/grid';
 import { activityWord, neighbourhood } from '../../sampling/presence';
 import { usePlayerStore } from '../../state/playerStore';
 import type { GibsFrame } from '../map/useGibsFrame';
+import { noteBus } from '../../audio/noteBus';
+import { colormapColor, hexToRgb, type RGB } from '../../globe/colors';
 
 export type { InputSource } from '../map/MapCanvas';
 import type { InputSource } from '../map/MapCanvas';
@@ -38,6 +40,8 @@ export interface Reading {
   level: number | null;
   /** Value to mark on the colour bar, if any. */
   marker: number | null;
+  /** Ripple colour on the globe, or null when there's nothing to show (land, no fire). */
+  color: RGB | null;
   play: () => void;
 }
 
@@ -81,6 +85,7 @@ export function useExplore(dataset: Dataset, frame: GibsFrame) {
           unit: ocean ? '' : '%',
           level: f > 0 ? t : null,
           marker: null,
+          color: f > 0 ? hexToRgb('#ec6210') : null,
           play: () => {
             if (f > 0) {
               engine.exploreQuiet();
@@ -109,6 +114,7 @@ export function useExplore(dataset: Dataset, frame: GibsFrame) {
         unit: smp.entry ? dataset.unit : '',
         level: smp.entry ? normalize(smp.entry.value, dataset.mapping.domain) : null,
         marker: smp.entry?.value ?? null,
+        color: smp.entry ? colormapColor(grid.colormap, smp.entry.value) : null,
         play: () => {
           if (midi !== null) engine.exploreTone(midiToFreq(midi), pan, 0.6);
           else engine.exploreLand(pan);
@@ -123,6 +129,7 @@ export function useExplore(dataset: Dataset, frame: GibsFrame) {
   const announceTimer = useRef<number | undefined>(undefined);
   const lastVibrate = useRef(0);
   const moveSeq = useRef(0);
+  const lastRipple = useRef(0);
 
   const moveTo = useCallback(
     async (lat: number, lon: number, source: InputSource) => {
@@ -139,6 +146,12 @@ export function useExplore(dataset: Dataset, frame: GibsFrame) {
       }
       if (engine.ready) r.play();
       s.setCaption(r.caption);
+      // A ripple when the reading changes (or on every deliberate step), throttled.
+      const now = performance.now();
+      if (r.color && (r.key !== lastKey.current || source === 'keyboard' || source === 'click') && now - lastRipple.current > 110) {
+        lastRipple.current = now;
+        noteBus.emit({ lat: r.lat, lon: r.lon, color: r.color, velocity: 0.35 + 0.5 * (r.level ?? 0.5) });
+      }
 
       // Haptics on touch devices, only when the reading changes.
       if (source === 'touch' && r.key !== lastKey.current && 'vibrate' in navigator) {

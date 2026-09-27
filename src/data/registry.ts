@@ -13,7 +13,14 @@ const seaIceSeries = toAnnualSeries(parseCsv(seaIceCsv), 'year', 'extent');
 
 export const arcticSeaIce: Dataset = {
   id: 'arctic-sea-ice-september',
-  place: { label: 'Arctic Ocean · north of ~60° N', spoken: 'the Arctic Ocean' },
+  // Extent is pan-Arctic: a latitude but no single longitude (ripples appear on the Arctic side facing the viewer).
+  place: { label: 'Arctic Ocean · north of ~60° N', spoken: 'the Arctic Ocean', lat: 74 },
+  // Little ice = deep open-water blue, lots of ice = white.
+  palette: [
+    { t: 0, color: '#123a6b' },
+    { t: 0.5, color: '#4fa3d9' },
+    { t: 1, color: '#f4fbff' },
+  ],
   compare: { subject: 'Arctic sea ice', higher: 'had more sea ice', lower: 'had less sea ice' },
   title: 'Arctic Sea Ice',
   unit: 'million km²',
@@ -104,6 +111,12 @@ const gistempSeries = toAnnualSeries(parseCsv(gistempCsv, { headerStartsWith: 'Y
 export const globalTemperature: Dataset = {
   id: 'global-temperature',
   place: { label: 'Whole globe · land + ocean', spoken: 'the whole globe, land and ocean' },
+  // Diverging: white at the 1951–1980 average (0 °C sits at t = 0.3 of the [-0.6, 1.4] domain).
+  palette: [
+    { t: 0, color: '#3b6fd8' },
+    { t: 0.3, color: '#eef2f7' },
+    { t: 1, color: '#d7301f' },
+  ],
   compare: { subject: 'global temperature', higher: 'was warmer', lower: 'was cooler' },
   title: 'Global Temperature',
   unit: '°C',
@@ -142,7 +155,12 @@ const co2Series = toAnnualSeries(parseCsv(co2Csv), 'year', 'mean');
 
 export const carbonDioxide: Dataset = {
   id: 'co2-mauna-loa',
-  place: { label: 'Mauna Loa, Hawaii · 19.5° N, 155.6° W', spoken: 'Mauna Loa Observatory, Hawaii' },
+  place: { label: 'Mauna Loa, Hawaii · 19.5° N, 155.6° W', spoken: 'Mauna Loa Observatory, Hawaii', lat: 19.54, lon: -155.58 },
+  palette: [
+    { t: 0, color: '#5a8f6a' },
+    { t: 0.5, color: '#f2b766' },
+    { t: 1, color: '#e0482f' },
+  ],
   compare: { subject: 'carbon dioxide', higher: 'had more carbon dioxide', lower: 'had less carbon dioxide' },
   title: 'Carbon Dioxide (CO₂)',
   unit: 'ppm',

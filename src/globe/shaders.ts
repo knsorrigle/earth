@@ -64,3 +64,44 @@ export const atmosphereFragment = /* glsl */ `
     gl_FragColor = vec4(uColor * glow, glow);
   }
 `;
+
+/**
+ * Note ripples: one instanced quad per ring, tangent to the globe. Growth and
+ * fade are computed in the shader from each instance's start time, so the CPU
+ * only writes a few floats when a note fires.
+ */
+export const rippleVertex = /* glsl */ `
+  attribute vec3 aColor;
+  attribute float aStart;
+  attribute float aSize;
+  uniform float uTime;
+  uniform float uDuration;
+  varying vec2 vUv;
+  varying vec3 vColor;
+  varying float vLife;
+  void main() {
+    float life = clamp((uTime - aStart) / uDuration, 0.0, 1.0);
+    float grow = 1.0 - pow(1.0 - life, 3.0);
+    vec3 p = position * aSize * mix(0.12, 1.0, grow);
+    vUv = uv;
+    vColor = aColor;
+    vLife = life;
+    gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(p, 1.0);
+  }
+`;
+
+export const rippleFragment = /* glsl */ `
+  varying vec2 vUv;
+  varying vec3 vColor;
+  varying float vLife;
+  void main() {
+    if (vLife >= 1.0) discard;
+    float d = length(vUv - 0.5) * 2.0;
+    // A crisp ring with a soft inner trail.
+    float ring = smoothstep(0.66, 0.84, d) * (1.0 - smoothstep(0.88, 1.0, d));
+    float trail = smoothstep(0.15, 0.84, d) * (1.0 - smoothstep(0.84, 0.94, d)) * 0.3;
+    float a = (ring + trail) * pow(1.0 - vLife, 1.4);
+    gl_FragColor = vec4(vColor * (1.6 * a), a);
+    #include <colorspace_fragment>
+  }
+`;
