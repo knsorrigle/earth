@@ -10,6 +10,7 @@ import { describeColumn, planScan } from '../../sampling/scan';
 import { SCAN_DURATIONS, usePlayerStore, type ScanDuration } from '../../state/playerStore';
 import type { GibsFrame } from '../map/useGibsFrame';
 import { noteBus } from '../../audio/noteBus';
+import { setGlobeFocus } from '../../globe/focus';
 import { colormapColor, hexToRgb, type RGB } from '../../globe/colors';
 
 export const SCAN_COLUMNS = 72; // 5° per step
@@ -97,6 +98,16 @@ export function useScanner(dataset: Dataset, frame: GibsFrame) {
       usePlayerStore.getState().setScan({ isScanning: false });
     }
   }, [scheduler, plan]);
+
+  // The globe faces the beam: the same audio-timed position as the 2D map's beam.
+  useEffect(
+    () =>
+      setGlobeFocus(() => {
+        const pos = scheduler.audiblePosition() ?? usePlayerStore.getState().scan.column + 0.5;
+        return { lon: -180 + pos * (360 / SCAN_COLUMNS), beam: true };
+      }),
+    [scheduler],
+  );
 
   useEffect(
     () => () => {

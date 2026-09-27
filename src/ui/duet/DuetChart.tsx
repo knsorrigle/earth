@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react';
 import type { Dataset } from '../../data/types';
 import type { DuetStep } from '../../mapping/duet';
 import { useElementWidth } from '../useElementWidth';
+import { niceTicks } from '../ticks';
 
 interface Props {
   dsA: Dataset;
@@ -16,16 +17,6 @@ interface Props {
 
 const HEIGHT = 280;
 const M = { top: 20, right: 52, bottom: 34, left: 52 };
-
-function niceTicks(lo: number, hi: number, count = 4): number[] {
-  const span = hi - lo || 1;
-  const raw = span / count;
-  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
-  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => span / s <= count + 1) ?? raw;
-  const out: number[] = [];
-  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(Number(v.toFixed(6)));
-  return out;
-}
 
 /**
  * Two records on one time axis, each with its own vertical scale (A on the

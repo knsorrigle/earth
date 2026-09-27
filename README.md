@@ -58,6 +58,15 @@ The ring is a camera-facing halo of 96 bars, mirrored: lowest frequencies at the
 (cool), so position on the ring means pitch. One mesh; only a 48-float uniform changes per frame. Silent audio = a
 faint still baseline; when the globe is paused the canvas redraws only while there is sound. Off under reduced motion.
 
+## Scanner beam and follow (Phase 6, step 5)
+
+Modes offer the globe a focus through `src/globe/focus.ts` (read every frame, like the note bus): Scanner the beam's
+audio-timed longitude, Explore the cursor, Timeline/Duet a record's location when it has one (Mauna Loa). The globe,
+its ripples and the beam sit in one group that turns — shortest way round, eased — to keep the focus facing the camera
+at whatever azimuth the viewer has orbited to; idle auto-rotation pauses while following, and a **Follow** toggle turns
+it off. In Scanner a glowing meridian arc marks the beam and the globe shader brightens a ~9° band under it
+(`uBeamLon`, `uBeam`). No automatic turning under reduced motion. The yaw maths is unit-tested against three.js.
+
 ## Modes
 
 - **Timeline:** one note per year; pitch = value; a hum tuned to the reference year.

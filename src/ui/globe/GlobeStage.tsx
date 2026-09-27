@@ -3,7 +3,9 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, PerformanceMonitor, Stars } from '@react-three/drei';
 import { Bloom, EffectComposer } from '@react-three/postprocessing';
 import { useReducedMotion } from 'framer-motion';
-import { AdditiveBlending, BackSide, Color, DataTexture, ShaderMaterial, SRGBColorSpace, type Texture } from 'three';
+import { AdditiveBlending, BackSide, Color, DataTexture, type Group, ShaderMaterial, SRGBColorSpace, type Texture } from 'three';
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
+import { FollowController, ScanBeam } from './FollowAndBeam';
 import { getDataset } from '../../data/registry';
 import { rotationToFaceLon } from '../../globe/geo';
 import { atmosphereFragment, atmosphereVertex, globeFragment, globeVertex } from '../../globe/shaders';
@@ -17,6 +19,7 @@ import { SpectrumRing } from './SpectrumRing';
 
 const FADE_MS = 900;
 const RIM = new Color('#7cc8ff');
+const BEAM = new Color('#ffd166');
 
 function blankTexture(): Texture {
   const t = new DataTexture(new Uint8Array([27, 36, 50, 255]), 1, 1);
@@ -26,7 +29,17 @@ function blankTexture(): Texture {
 }
 
 /** The data globe: crossfades to each new frame, disposing the old texture afterwards. */
-function Globe({ bitmap, underlay, reduced, faceLon }: { bitmap: ImageBitmap | null; underlay: ImageBitmap | null; reduced: boolean; faceLon: number }) {
+function Globe({
+  bitmap,
+  underlay,
+  reduced,
+  materialRef,
+}: {
+  bitmap: ImageBitmap | null;
+  underlay: ImageBitmap | null;
+  reduced: boolean;
+  materialRef: React.MutableRefObject<ShaderMaterial | null>;
+}) {
   const { invalidate } = useThree();
   const blank = useMemo(blankTexture, []);
   // Built imperatively: R3F copies a `uniforms` prop, and texture swaps must reach the live material.
@@ -35,11 +48,20 @@ function Globe({ bitmap, underlay, reduced, faceLon }: { bitmap: ImageBitmap | n
       new ShaderMaterial({
         vertexShader: globeVertex,
         fragmentShader: globeFragment,
-        uniforms: { uTexA: { value: blank as Texture }, uTexB: { value: blank as Texture }, uMix: { value: 0 }, uRimColor: { value: RIM } },
+        uniforms: {
+          uTexA: { value: blank as Texture },
+          uTexB: { value: blank as Texture },
+          uMix: { value: 0 },
+          uRimColor: { value: RIM },
+          uBeamLon: { value: 0 },
+          uBeam: { value: 0 },
+          uBeamColor: { value: BEAM },
+        },
         toneMapped: false,
       }),
     [blank],
   );
+  materialRef.current = material;
   const uniforms = material.uniforms as { uTexA: { value: Texture }; uTexB: { value: Texture }; uMix: { value: number } };
   const fadeStart = useRef<number | null>(null);
 
@@ -89,7 +111,7 @@ function Globe({ bitmap, underlay, reduced, faceLon }: { bitmap: ImageBitmap | n
   });
 
   return (
-    <mesh rotation={[0, rotationToFaceLon(faceLon), 0]} material={material}>
+    <mesh material={material}>
       <sphereGeometry args={[1, 128, 64]} />
       {/* Ripples ride on the globe. None under reduced motion: every note still has sound and a caption. */}
       {!reduced && <Ripples />}
@@ -160,6 +182,11 @@ export default function GlobeStage() {
   const [rotating, setRotating] = useState(!reduced);
   const [bloom, setBloom] = useState(true);
   const [dpr, setDpr] = useState(1.5);
+  const [follow, setFollow] = useState(true);
+  const worldRef = useRef<Group>(null);
+  const beamRef = useRef<Group>(null);
+  const globeMaterial = useRef<ShaderMaterial | null>(null);
+  const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
   useEffect(() => {
     if (reduced) setRotating(false);
@@ -193,16 +220,32 @@ export default function GlobeStage() {
             <color attach="background" args={['#05070b']} />
             <FitCamera />
             <Stars radius={80} depth={40} count={1400} factor={3} saturation={0} fade speed={0} />
-            <Globe bitmap={frame.bitmap} underlay={frame.underlay} reduced={reduced} faceLon={-40} />
+            {/* Globe, ripples and beam turn together so the focus can face the viewer. */}
+            <group ref={worldRef} rotation={[0, rotationToFaceLon(-40), 0]}>
+              <Globe bitmap={frame.bitmap} underlay={frame.underlay} reduced={reduced} materialRef={globeMaterial} />
+              <ScanBeam beamRef={beamRef} />
+            </group>
+            <FollowController
+              worldRef={worldRef}
+              beamRef={beamRef}
+              globeMaterial={globeMaterial}
+              controlsRef={controlsRef}
+              follow={follow && !reduced}
+              rotating={rotating}
+            />
             <Atmosphere />
             {/* Live spectrum; off under reduced motion (it flickers with every sound). */}
             {!reduced && <SpectrumRing />}
             <OrbitControls
+              ref={controlsRef}
               enablePan={false}
               enableDamping
               dampingFactor={0.08}
               rotateSpeed={0.5}
               minDistance={1.8}
+              // Keep the view between ~70° N and ~70° S so the globe never ends up upside-down or edge-on.
+              minPolarAngle={0.35}
+              maxPolarAngle={Math.PI - 0.35}
               maxDistance={7}
               autoRotate={rotating}
               autoRotateSpeed={0.35}
@@ -217,9 +260,22 @@ export default function GlobeStage() {
       </div>
       <Hud
         controls={
-          <button type="button" className="btn small ghost" onClick={() => setRotating((r) => !r)} aria-pressed={!rotating}>
-            {rotating ? 'Pause rotation' : 'Resume rotation'}
-          </button>
+          <>
+            <button type="button" className="btn small ghost" onClick={() => setRotating((r) => !r)} aria-pressed={!rotating}>
+              {rotating ? 'Pause rotation' : 'Resume rotation'}
+            </button>
+            {!reduced && (
+              <button
+                type="button"
+                className="btn small ghost"
+                onClick={() => setFollow((f) => !f)}
+                aria-pressed={follow}
+                title="Turn the globe to face the scanner beam, cursor or record location"
+              >
+                {follow ? 'Following' : 'Follow'}
+              </button>
+            )}
+          </>
         }
       />
     </section>

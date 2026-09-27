@@ -6,6 +6,7 @@ import { buildDuet, describeDuetMapping, DUET_OFFSET_BEATS, DUET_PAN, type DuetS
 import type { NoteEvent, ReferenceTone } from '../../mapping/types';
 import { usePlayerStore } from '../../state/playerStore';
 import { noteBus } from '../../audio/noteBus';
+import { setGlobeFocus } from '../../globe/focus';
 import { seriesVisual } from '../globe/visuals';
 import { relationToReference, shouldAnnounce } from '../announce';
 import type { TimelineControls } from '../usePlayer';
@@ -94,6 +95,13 @@ export function useDuet(dsA: Dataset, dsB: Dataset) {
   useEffect(() => scheduler.setBpm(bpm), [scheduler, bpm]);
   useEffect(() => engine.setMasterMuted(muted), [muted]);
   useEffect(() => engine.setMasterVolume(volumeDb), [volumeDb]);
+
+  // Face a record's location if either has one.
+  useEffect(() => {
+    const lon = dsA.place?.lon ?? dsB.place?.lon;
+    if (lon === undefined) return;
+    return setGlobeFocus(() => ({ lon }));
+  }, [dsA, dsB]);
 
   // Mallet to the left while in Duet; centred again on the way out.
   useEffect(() => {

@@ -3,6 +3,7 @@ import type { Dataset } from '../data/types';
 import type { NoteEvent, ReferenceTone } from '../mapping/types';
 import { pointAnnouncement } from './announce';
 import { useElementWidth } from './useElementWidth';
+import { niceTicks } from './ticks';
 
 interface Props {
   dataset: Dataset;
@@ -31,16 +32,22 @@ export function TimelineChart({ dataset, events, reference, index, onSeek, onScr
     const innerH = HEIGHT - M.top - M.bottom;
     const years = events.map((e) => e.year);
     const values = events.map((e) => e.value);
-    const y0 = Math.floor(Math.min(...values, reference.value) - 0.25);
-    const y1 = Math.ceil(Math.max(...values, reference.value) + 0.25);
+    const vMin = Math.min(...values, reference.value);
+    const vMax = Math.max(...values, reference.value);
+    const pad = (vMax - vMin) * 0.06 || 1;
+    const yTicks = niceTicks(vMin - pad, vMax + pad, 5);
+    // Axis spans whole ticks so the grid lines frame the data.
+    const tickStep = yTicks.length > 1 ? yTicks[1] - yTicks[0] : 1;
+    const y0 = Math.min(yTicks[0], Math.floor((vMin - pad) / tickStep) * tickStep);
+    const y1 = Math.max(yTicks[yTicks.length - 1], Math.ceil((vMax + pad) / tickStep) * tickStep);
     const x0 = years[0];
     const x1 = years[years.length - 1];
     const x = (year: number) => M.left + ((year - x0) / Math.max(1, x1 - x0)) * innerW;
     const y = (v: number) => M.top + (1 - (v - y0) / (y1 - y0)) * innerH;
     const path = events.map((e, i) => `${i ? 'L' : 'M'}${x(e.year).toFixed(1)},${y(e.value).toFixed(1)}`).join('');
-    const yTicks: number[] = [];
-    for (let v = y0; v <= y1; v++) yTicks.push(v);
-    const step = innerW < 420 ? 10 : 5;
+    // Year labels at least ~52 px apart, on round years.
+    const span = Math.max(1, x1 - x0);
+    const step = [5, 10, 20, 25, 50].find((st) => (innerW * st) / span >= 52) ?? 50;
     const xTicks = years.filter((yr) => yr % step === 0);
     return { w, innerW, innerH, x, y, path, yTicks, xTicks, x0, x1 };
   }, [width, events, reference]);

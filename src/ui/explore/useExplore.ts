@@ -11,6 +11,7 @@ import { activityWord, neighbourhood } from '../../sampling/presence';
 import { usePlayerStore } from '../../state/playerStore';
 import type { GibsFrame } from '../map/useGibsFrame';
 import { noteBus } from '../../audio/noteBus';
+import { setGlobeFocus } from '../../globe/focus';
 import { colormapColor, hexToRgb, type RGB } from '../../globe/colors';
 
 export type { InputSource } from '../map/MapCanvas';
@@ -192,6 +193,9 @@ export function useExplore(dataset: Dataset, frame: GibsFrame) {
 
   // Stop sounds when leaving Explore mode.
   useEffect(() => leave, [leave]);
+
+  // The globe turns to keep the cursor in view.
+  useEffect(() => setGlobeFocus(() => ({ lon: usePlayerStore.getState().explore.cursor.lon })), []);
 
   const speakHere = useCallback(() => {
     const { lat, lon } = usePlayerStore.getState().explore.cursor;

@@ -7,6 +7,7 @@ import type { NoteEvent } from '../mapping/types';
 import type { Dataset } from '../data/types';
 import { usePlayerStore } from '../state/playerStore';
 import { noteBus } from '../audio/noteBus';
+import { setGlobeFocus } from '../globe/focus';
 import { seriesVisual } from './globe/visuals';
 import { detailedAnnouncement, pointAnnouncement, relationToReference, shouldAnnounce } from './announce';
 
@@ -85,6 +86,13 @@ export function usePlayer(dataset: Dataset) {
 
   // Timeline plays centred (Duet moves the melody voice left).
   useEffect(() => engine.setMelodyPan(0), []);
+
+  // Records measured at one place (Mauna Loa) turn the globe there; pan-Arctic and global ones don't.
+  useEffect(() => {
+    const lon = dataset.place?.lon;
+    if (lon === undefined) return;
+    return setGlobeFocus(() => ({ lon }));
+  }, [dataset]);
 
   // Leaving Timeline mode: stop cleanly so nothing keeps sounding.
   useEffect(

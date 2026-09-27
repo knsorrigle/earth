@@ -22,6 +22,9 @@ export const globeFragment = /* glsl */ `
   uniform sampler2D uTexB;
   uniform float uMix;
   uniform vec3 uRimColor;
+  uniform float uBeamLon;
+  uniform float uBeam;
+  uniform vec3 uBeamColor;
   varying vec2 vUv;
   varying vec3 vNormalV;
   varying vec3 vViewDirV;
@@ -29,6 +32,11 @@ export const globeFragment = /* glsl */ `
     vec4 a = texture2D(uTexA, vUv);
     vec4 b = texture2D(uTexB, vUv);
     vec3 c = mix(a.rgb, b.rgb, uMix);
+    // Scanner: brighten the surface under the beam (a soft band ~9° wide around its meridian).
+    float lon = vUv.x * 360.0 - 180.0;
+    float dLon = abs(mod(lon - uBeamLon + 540.0, 360.0) - 180.0);
+    float beam = exp(-pow(dLon / 9.0, 2.0)) * uBeam;
+    c = c * (1.0 + 0.6 * beam) + uBeamColor * 0.1 * beam;
     float ndv = clamp(dot(vNormalV, vViewDirV), 0.0, 1.0);
     float limb = mix(0.45, 1.0, pow(ndv, 0.6));
     // Thin atmospheric rim on the surface itself, only at the very edge.
