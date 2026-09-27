@@ -6,10 +6,12 @@ import { LiveRegion } from './LiveRegion';
 import { Sources } from './Legend';
 import { TimelineView } from './TimelineView';
 import { ExploreView } from './explore/ExploreView';
+import { ScannerView } from './scanner/ScannerView';
 
 const MODES: { id: Mode; label: string; key: string }[] = [
   { id: 'timeline', label: 'Timeline', key: '1' },
   { id: 'explore', label: 'Explore map', key: '2' },
+  { id: 'scanner', label: 'Scanner', key: '3' },
 ];
 
 export function App() {
@@ -61,11 +63,9 @@ export function App() {
         </header>
 
         <main id="player" tabIndex={-1} role="tabpanel" aria-labelledby={`tab-${mode}`}>
-          {mode === 'timeline' ? (
-            <TimelineView key="timeline" dataset={getDataset(timelineId)} />
-          ) : (
-            <ExploreView key="explore" dataset={getDataset(exploreId)} />
-          )}
+          {mode === 'timeline' && <TimelineView key="timeline" dataset={getDataset(timelineId)} />}
+          {mode === 'explore' && <ExploreView key="explore" dataset={getDataset(exploreId)} />}
+          {mode === 'scanner' && <ScannerView key="scanner" dataset={getDataset(exploreId)} />}
         </main>
 
         <Sources datasets={DATASETS} />

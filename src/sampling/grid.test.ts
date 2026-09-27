@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildValueGrid, gridStats, latLonToPixel, pixelToLatLon, sampleGrid, wrapLon, type BBox } from './grid';
 import { createInverter } from './inverter';
 import type { Colormap } from './colormap';
-import { formatLatLon, speakLatLon } from './geo';
+import { formatLatLon, formatLon, speakLatLon, speakLon } from './geo';
 
 const cmap: Colormap = {
   title: 't',
@@ -66,5 +66,10 @@ describe('geo text', () => {
     expect(formatLatLon(12.5, -140)).toBe('12.5° N, 140.0° W');
     expect(speakLatLon(12.5, -140)).toBe('12.5 degrees north, 140 degrees west');
     expect(speakLatLon(0, 0)).toBe('0 degrees, 0 degrees');
+    expect(speakLon(-150)).toBe('150 degrees west');
+    expect(speakLon(-180)).toBe('180 degrees');
+    expect(speakLon(2.5, 1)).toBe('2.5 degrees east');
+    expect(formatLon(-147.5, 1)).toBe('147.5° W');
+    expect(formatLon(0)).toBe('0°');
   });
 });

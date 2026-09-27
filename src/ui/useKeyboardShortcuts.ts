@@ -14,7 +14,7 @@ export const SHORTCUTS: { keys: string; action: string }[] = [
   { keys: 'L', action: 'Say what the sounds mean' },
   { keys: 'D', action: 'Reference hum on / off' },
   { keys: 'M', action: 'Mute / unmute' },
-  { keys: '1 / 2', action: 'Timeline / Explore mode' },
+  { keys: '1 / 2 / 3', action: 'Timeline / Explore / Scanner mode' },
 ];
 
 /**
@@ -44,6 +44,10 @@ export function useGlobalKeys() {
         case '2':
           if (s.mode !== 'explore') s.setMode('explore');
           s.announce('Explore mode');
+          break;
+        case '3':
+          if (s.mode !== 'scanner') s.setMode('scanner');
+          s.announce('Scanner mode');
           break;
         default:
           return;

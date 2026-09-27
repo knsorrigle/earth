@@ -8,7 +8,7 @@ export interface Announcement {
   id: number;
 }
 
-export type Mode = 'timeline' | 'explore';
+export type Mode = 'timeline' | 'explore' | 'scanner';
 
 export type FrameStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -25,9 +25,24 @@ export interface ExploreState {
   notice: string;
 }
 
+export const SCAN_DURATIONS = [15, 30, 60, 90] as const;
+export type ScanDuration = (typeof SCAN_DURATIONS)[number];
+
+export interface ScanState {
+  /** Column the beam is on (last heard, or where playback will start). */
+  column: number;
+  isScanning: boolean;
+  /** Seconds for a full west-to-east sweep. */
+  durationSec: ScanDuration;
+  /** Speak the longitude every N degrees while scanning (0 = only start/end). */
+  announceEveryDeg: 0 | 30 | 60 | 90;
+}
+
 export interface PlayerState {
   mode: Mode;
+  /** Shared by the map modes (Explore, Scanner): dataset, date and frame status. */
   explore: ExploreState;
+  scan: ScanState;
   datasetId: string;
   /** Index of the point currently shown / last heard. */
   index: number;
@@ -44,6 +59,7 @@ export interface PlayerState {
 
   setMode: (mode: Mode) => void;
   setExplore: (patch: Partial<ExploreState>) => void;
+  setScan: (patch: Partial<ScanState>) => void;
   setIndex: (i: number) => void;
   setPlaying: (p: boolean) => void;
   setBpm: (bpm: number) => void;
@@ -70,6 +86,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
     source: null,
     notice: '',
   },
+  scan: { column: 0, isScanning: false, durationSec: 30, announceEveryDeg: 60 },
   datasetId: 'arctic-sea-ice-september',
   index: 0,
   isPlaying: false,
@@ -84,6 +101,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
 
   setMode: (mode) => set({ mode, caption: '' }),
   setExplore: (patch) => set((s) => ({ explore: { ...s.explore, ...patch } })),
+  setScan: (patch) => set((s) => ({ scan: { ...s.scan, ...patch } })),
   setIndex: (index) => set({ index }),
   setPlaying: (isPlaying) => set({ isPlaying }),
   setBpm: (bpm) => set({ bpm: Math.round(Math.min(BPM_MAX, Math.max(BPM_MIN, bpm))) }),

@@ -1,19 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { engine } from '../../audio/engine';
 import type { Dataset } from '../../data/types';
 import { describeExploreMapping } from '../../mapping/legend';
 import { midiToFreq, midiToNoteName, normalize, valueToMidi } from '../../mapping/pitch';
 import { hapticPattern, LAND_HAPTIC, lonToPan } from '../../mapping/spatial';
-import type { Colormap } from '../../sampling/colormap';
-import { describeFrame, displayEntry, speakEntry } from '../../sampling/describe';
+import { displayEntry, speakEntry } from '../../sampling/describe';
 import { formatLatLon, speakLatLon } from '../../sampling/geo';
-import { loadColormap, loadFrame } from '../../sampling/gibs';
-import { buildValueGrid, clampLat, gridStats, sampleGrid, wrapLon, type Sample, type ValueGrid } from '../../sampling/grid';
-import { createInverter } from '../../sampling/inverter';
+import { clampLat, sampleGrid, wrapLon, type Sample } from '../../sampling/grid';
 import { usePlayerStore } from '../../state/playerStore';
+import type { GibsFrame } from '../map/useGibsFrame';
 
-/** hover = mouse move without a click (not a user gesture, so it can't unlock audio). */
-export type InputSource = 'hover' | 'click' | 'touch' | 'keyboard';
+export type { InputSource } from '../map/MapCanvas';
+import type { InputSource } from '../map/MapCanvas';
 
 /** How long the tone sustains after the cursor stops moving. */
 const IDLE_FADE_MS = 1400;
@@ -21,62 +19,11 @@ const IDLE_FADE_MS = 1400;
 const POINTER_ANNOUNCE_MS = 450;
 
 /**
- * Explore mode controller: loads a GIBS frame, inverts it to a value grid,
- * and sonifies / announces the value under a movable cursor.
+ * Explore mode controller: sonifies and announces the value under a movable
+ * cursor on an already-loaded frame.
  */
-export function useExplore(dataset: Dataset) {
-  const frameSpec = dataset.frame!;
-  const layer = dataset.gibsLayerId!;
-  const date = usePlayerStore((s) => s.explore.date);
-  const setExplore = usePlayerStore((s) => s.setExplore);
-
-  const [grid, setGrid] = useState<ValueGrid | null>(null);
-  const [bitmap, setBitmap] = useState<ImageBitmap | null>(null);
-  const colormapRef = useRef<Colormap | null>(null);
-
-  // ── Load colormap + frame whenever the date changes ──
-  useEffect(() => {
-    const ac = new AbortController();
-    setExplore({ status: 'loading', notice: '' });
-    usePlayerStore.getState().announce(`Loading ${dataset.title} for ${date}`);
-    (async () => {
-      const base = import.meta.env.BASE_URL;
-      colormapRef.current ??= await loadColormap(dataset.colormap!, base + frameSpec.colormapFallback, ac.signal);
-      const cmap = colormapRef.current;
-      const frame = await loadFrame(
-        { layer, date, width: frameSpec.width, height: frameSpec.height, bbox: frameSpec.bbox },
-        { baseUrl: base, cachedDates: frameSpec.cachedDates, signal: ac.signal },
-      );
-      const g = buildValueGrid(frame.rgba, frame.width, frame.height, frameSpec.bbox, cmap, createInverter(cmap));
-      if (ac.signal.aborted) return;
-      setGrid(g);
-      setBitmap((old) => {
-        old?.close();
-        return frame.bitmap;
-      });
-      setExplore({ status: 'ready', source: frame.source, shownDate: frame.date, notice: frame.notice ?? '' });
-      usePlayerStore
-        .getState()
-        .announce(
-          `${dataset.title} map ready for ${frame.date}. ` +
-            (frame.notice ? frame.notice + ' ' : '') +
-            'Use the arrow keys to move, F to describe the map.',
-        );
-    })().catch((err: unknown) => {
-      if (ac.signal.aborted) return;
-      const msg = err instanceof Error ? err.message : String(err);
-      setExplore({ status: 'error', notice: msg });
-      usePlayerStore.getState().announce(`Could not load the map. ${msg}`);
-    });
-    return () => ac.abort();
-  }, [date, dataset, frameSpec, layer, setExplore]);
-
-  const stats = useMemo(() => (grid ? gridStats(grid) : null), [grid]);
-
-  const words = useMemo(
-    () => ({ unitSpoken: dataset.unitSpoken, decimals: dataset.decimals, belowRangeMeans: frameSpec.belowRangeMeans }),
-    [dataset, frameSpec],
-  );
+export function useExplore(dataset: Dataset, frame: GibsFrame) {
+  const { grid, words } = frame;
 
   // ── Cursor → sound, haptics, captions, announcements ──
   const lastBin = useRef<number | null>(null);
@@ -166,15 +113,7 @@ export function useExplore(dataset: Dataset) {
     usePlayerStore.getState().announce(spoken(sampleGrid(grid, lat, lon)));
   }, [grid, spoken]);
 
-  const frameDescription = useMemo(
-    () =>
-      stats && grid
-        ? describeFrame(stats, dataset.title, usePlayerStore.getState().explore.shownDate ?? date, words)
-        : dataset.altText,
-    [stats, grid, dataset, date, words],
-  );
-
-  const describe = useCallback(() => usePlayerStore.getState().announce(frameDescription), [frameDescription]);
+  const describe = useCallback(() => usePlayerStore.getState().announce(frame.description), [frame.description]);
 
   const speakLegend = useCallback(
     () => usePlayerStore.getState().announce(`${dataset.title}. ${describeExploreMapping(dataset.mapping).join(' ')}`),
@@ -192,7 +131,7 @@ export function useExplore(dataset: Dataset) {
     }
   }, []);
 
-  return { grid, bitmap, stats, colormap: colormapRef.current, moveTo, moveBy, leave, speakHere, describe, speakLegend, activate, frameDescription };
+  return { moveTo, moveBy, leave, speakHere, describe, speakLegend, activate };
 }
 
 export type ExploreApi = ReturnType<typeof useExplore>;

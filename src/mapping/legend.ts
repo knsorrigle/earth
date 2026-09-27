@@ -23,3 +23,15 @@ export function describeExploreMapping(cfg: MappingConfig): string[] {
     `A soft rushing sound means land or no data.`,
   ];
 }
+
+/** Plain-words description of Scanner mode sounds. */
+export function describeScannerMapping(cfg: MappingConfig, bands: number): string[] {
+  const up = cfg.invert ? cfg.lowerMeans : cfg.higherMeans;
+  return [
+    `A line sweeps the map from west to east; it moves from your left ear to your right.`,
+    `At each step you hear up to ${bands} notes strummed from north to south, one per latitude band.`,
+    `Northern bands play higher, southern bands lower.`,
+    `Within a band, a higher note means ${up} than elsewhere at that latitude.`,
+    `Quieter notes are partly land; missing notes are land.`,
+  ];
+}

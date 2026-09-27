@@ -5,9 +5,14 @@ import { displayEntry } from '../../sampling/describe';
 import { formatLatLon } from '../../sampling/geo';
 import { sampleGrid } from '../../sampling/grid';
 import { usePlayerStore } from '../../state/playerStore';
-import { ColorBar } from './ColorBar';
-import { MapCanvas } from './MapCanvas';
+import { shiftDate } from '../map/DateBar';
+import { ColorBar } from '../map/ColorBar';
+import { MapCanvas } from '../map/MapCanvas';
+import { useGibsFrame } from '../map/useGibsFrame';
+import { DateBar } from '../map/DateBar';
 import { useExplore, type ExploreApi } from './useExplore';
+
+const EXPLORE_HINT = 'Use the arrow keys to move, F to describe the map.';
 
 export const EXPLORE_SHORTCUTS: { keys: string; action: string }[] = [
   { keys: 'Arrow keys', action: 'Move 1°' },
@@ -19,23 +24,14 @@ export const EXPLORE_SHORTCUTS: { keys: string; action: string }[] = [
   { keys: 'M', action: 'Mute / unmute' },
 ];
 
-function shiftDate(date: string, days: number): string {
-  const d = new Date(`${date}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
 export function ExploreView({ dataset }: { dataset: Dataset }) {
-  const api = useExplore(dataset);
+  const frame = useGibsFrame(dataset, EXPLORE_HINT);
+  const api = useExplore(dataset, frame);
   useExploreKeys(api, dataset);
   const ex = usePlayerStore((s) => s.explore);
-  const setExplore = usePlayerStore((s) => s.setExplore);
   const caption = usePlayerStore((s) => s.caption);
-  const sample = api.grid ? sampleGrid(api.grid, ex.cursor.lat, ex.cursor.lon) : null;
-  const { start, end } = dataset.dateRange;
-  const setDate = (d: string) => {
-    if (d >= start && d <= end) setExplore({ date: d });
-  };
+  const sample = frame.grid ? sampleGrid(frame.grid, ex.cursor.lat, ex.cursor.lon) : null;
+  const { start } = dataset.dateRange;
 
   return (
     <>
@@ -55,31 +51,12 @@ export function ExploreView({ dataset }: { dataset: Dataset }) {
         </div>
       </section>
 
-      <div className="explore-bar">
-        <div className="date-controls" role="group" aria-label="Date">
-          <button type="button" className="btn small" onClick={() => setDate(shiftDate(ex.date, -1))} aria-label="Previous day">
-            ‹
-          </button>
-          <label className="date-field">
-            <span className="sr-only">Map date</span>
-            <input type="date" value={ex.date} min={start} max={end} onChange={(e) => e.target.value && setDate(e.target.value)} />
-          </label>
-          <button type="button" className="btn small" onClick={() => setDate(shiftDate(ex.date, 1))} aria-label="Next day" disabled={ex.date >= end}>
-            ›
-          </button>
-        </div>
-        <p className={`frame-status ${ex.source ?? ''}`} role="note">
-          {ex.status === 'loading' && 'Loading from NASA GIBS…'}
-          {ex.status === 'ready' &&
-            (ex.source === 'live' ? `Live from NASA GIBS · ${ex.shownDate}` : `Saved copy · ${ex.shownDate}`)}
-          {ex.status === 'error' && `Map unavailable: ${ex.notice}`}
-          {ex.status === 'ready' && ex.notice && <span className="notice"> — {ex.notice}</span>}
-        </p>
-      </div>
+      <DateBar dataset={dataset} />
 
       <figure className="map-figure">
         <MapCanvas
-          bitmap={api.bitmap}
+          bitmap={frame.bitmap}
+          cursor={ex.cursor}
           label={`${dataset.title} map. Arrow keys move the cursor; F describes the map.`}
           describedBy="map-alt"
           busy={ex.status === 'loading'}
@@ -87,11 +64,11 @@ export function ExploreView({ dataset }: { dataset: Dataset }) {
           onActivate={() => void api.activate()}
           onLeave={api.leave}
         />
-        {api.grid && (
-          <ColorBar colormap={api.grid.colormap} unit="°" ticks={[0, 5, 10, 15, 20, 25, 30]} marker={sample?.entry?.value} domain={[-1, 33]} />
+        {frame.grid && (
+          <ColorBar colormap={frame.grid.colormap} unit="°" ticks={[0, 5, 10, 15, 20, 25, 30]} marker={sample?.entry?.value} domain={[-1, 33]} />
         )}
         <figcaption id="map-alt" className="chart-alt">
-          {api.frameDescription}
+          {frame.description}
         </figcaption>
       </figure>
 
@@ -103,7 +80,7 @@ export function ExploreView({ dataset }: { dataset: Dataset }) {
               <button type="button" className="btn small" onClick={api.speakLegend}>
                 Speak it <kbd>L</kbd>
               </button>
-              <button type="button" className="btn small" onClick={api.describe} disabled={!api.grid}>
+              <button type="button" className="btn small" onClick={api.describe} disabled={!frame.grid}>
                 Describe this map <kbd>F</kbd>
               </button>
             </div>

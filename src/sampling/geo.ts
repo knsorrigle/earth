@@ -12,3 +12,17 @@ export function speakLatLon(lat: number, lon: number, decimals = 1): string {
   const ew = lon === 0 || Math.abs(lon) === 180 ? '' : lon > 0 ? ' east' : ' west';
   return `${f(lat)} degrees${ns}, ${f(lon)} degrees${ew}`;
 }
+
+/** "150 degrees west" */
+export function speakLon(lon: number, decimals = 0): string {
+  const v = String(Number(Math.abs(lon).toFixed(decimals)));
+  if (Number(v) === 0 || Number(v) === 180) return `${v} degrees`;
+  return `${v} degrees ${lon > 0 ? 'east' : 'west'}`;
+}
+
+/** "150° W" */
+export function formatLon(lon: number, decimals = 0): string {
+  const v = Math.abs(lon).toFixed(decimals);
+  if (Number(v) === 0 || Number(v) === 180) return `${v}°`;
+  return `${v}° ${lon > 0 ? 'E' : 'W'}`;
+}

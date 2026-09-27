@@ -1,6 +1,6 @@
 import * as Tone from 'tone';
 
-export type ChannelId = 'melody' | 'drone' | 'explore';
+export type ChannelId = 'melody' | 'drone' | 'explore' | 'scanner';
 
 export interface NoteSpec {
   freq: number;
@@ -17,6 +17,7 @@ export interface NoteSpec {
  *   drone oscillators -> lowpass -> Gain -> Channel(drone) ─┤
  *   explore Synth -> lowpass -> Panner ─┐                   │
  *   land pink noise -> lowpass -> Gain -> Panner ─> Channel(explore) ─┤
+ *   scanner PolySynth -> lowpass -> Panner -> Channel(scanner) ─┤
  *                                   Reverb -> master Gain -> Limiter -> SoftClip -> Destination
  *
  * Normal playback peaks around -15 dBFS. The limiter tames dense passages, and
@@ -57,6 +58,9 @@ export class AudioEngine {
   private landGain!: Tone.Gain;
   private landPanner!: Tone.Panner;
   private exploreSounding = false;
+  private scanSynth!: Tone.PolySynth<Tone.Synth>;
+  private scanFilter!: Tone.Filter;
+  private scanPanner!: Tone.Panner;
 
   /** True only once the whole graph exists (build() is async: reverb IR generation). */
   private built = false;
@@ -92,6 +96,7 @@ export class AudioEngine {
       melody: new Tone.Channel({ volume: -2 }).connect(this.reverb),
       drone: new Tone.Channel({ volume: -14 }).connect(this.reverb),
       explore: new Tone.Channel({ volume: 0 }).connect(this.reverb),
+      scanner: new Tone.Channel({ volume: 3 }).connect(this.reverb),
     };
 
     // Melody: soft mallet-like triangle, rounded off by a gentle lowpass.
@@ -129,7 +134,34 @@ export class AudioEngine {
     this.landFilter = new Tone.Filter({ type: 'lowpass', frequency: 650, rolloff: -24 }).connect(this.landGain);
     this.landNoise = new Tone.Noise({ type: 'pink', volume: -10 }).connect(this.landFilter);
     this.landNoise.start();
+
+    // Scanner: soft harp-like plucks; all notes of one step share the sweep's pan.
+    this.scanPanner = new Tone.Panner(0).connect(this.channels.scanner);
+    this.scanFilter = new Tone.Filter({ type: 'lowpass', frequency: 2600, rolloff: -12, Q: 0.3 }).connect(this.scanPanner);
+    this.scanSynth = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 0.004, decay: 0.5, sustain: 0.06, release: 0.9 },
+      volume: -2,
+    }).connect(this.scanFilter);
+    this.scanSynth.maxPolyphony = 24;
     this.built = true;
+  }
+
+  /** One scanner note at an exact (scheduled) time. */
+  playScanNote(freq: number, velocity: number, time: number, duration = 0.35): void {
+    if (!this.ready) return;
+    this.scanSynth.triggerAttackRelease(freq, duration, time, Math.min(1, Math.max(0, velocity)));
+  }
+
+  /** Pan for the scanner voice, ramped briefly so steps never click. */
+  setScanPan(pan: number, time?: number): void {
+    if (!this.ready) return;
+    this.scanPanner.pan.rampTo(pan, 0.04, time);
+  }
+
+  releaseScanner(): void {
+    if (!this.ready) return;
+    this.scanSynth.releaseAll();
   }
 
   /** Sound the value under the explore cursor. Glides if already sounding. */
@@ -223,7 +255,8 @@ export class AudioEngine {
     if (!this.ready) return;
     [this.droneLow, this.droneHigh, this.droneFilter, this.droneGain, this.melody, this.melodyFilter,
       this.exploreSynth, this.exploreFilter, this.explorePanner, this.landNoise, this.landFilter, this.landGain,
-      this.landPanner, this.channels.melody, this.channels.drone, this.channels.explore, this.reverb, this.master, this.limiter, this.clipPreGain, this.clipper].forEach((n) => n.dispose());
+      this.landPanner, this.scanSynth, this.scanFilter, this.scanPanner, this.channels.melody, this.channels.drone,
+      this.channels.explore, this.channels.scanner, this.reverb, this.master, this.limiter, this.clipPreGain, this.clipper].forEach((n) => n.dispose());
     this.built = false;
     this.initPromise = null;
   }

@@ -20,6 +20,14 @@ npm run build
 | `src/ui` | React UI, keyboard control, live-region announcements |
 | `src/sampling` | GIBS frame loading (with offline fallback), colormap XML parsing, colour → value inversion (exact match, then nearest in CIE LAB), value grids and frame statistics |
 
+## Modes
+
+- **Timeline:** one note per year; pitch = value; a hum tuned to the reference year.
+- **Explore map:** a gliding tone for the value under the cursor; west/east panned left/right; pink noise over land.
+- **Scanner:** a beam sweeps west → east in 72 steps of 5°. Each step strums up to 8 latitude bands north → south
+  (22.5° each). Band = register (north higher); within a band, pitch follows that band's own range across the frame, so
+  regional contrasts are audible at every latitude; velocity follows ocean coverage; all-land cells are silent.
+
 ## Data
 
 - **Arctic sea ice, September extent, 1979–2025.** NSIDC Sea Ice Index v4 (G02135),
@@ -46,4 +54,6 @@ Space/K play-pause · ←/→ year · Shift+←/→ 10 years · Home/End · +/�
 
 **Explore map:** arrows move 1° · Shift+arrows 10° · I value + location · F describe the map · L legend · [ / ] previous / next day · M mute
 
-**Everywhere:** 1 Timeline · 2 Explore
+**Scanner:** Space/K start-pause sweep · ←/→ step 5° · Shift+←/→ 30° · Home/End · +/− sweep speed · I describe the line under the beam · F describe the map · L legend · [ / ] day
+
+**Everywhere:** 1 Timeline · 2 Explore · 3 Scanner · M mute
