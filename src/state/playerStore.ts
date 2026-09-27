@@ -8,7 +8,10 @@ export interface Announcement {
   id: number;
 }
 
-export type Mode = 'timeline' | 'explore' | 'scanner' | 'duet';
+export type Mode = 'timeline' | 'explore' | 'scanner' | 'duet' | 'eartest';
+
+export type EarDifficulty = 'easy' | 'medium' | 'hard';
+export type EarSet = 'mixed' | 'timeline' | 'region';
 
 export type FrameStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -43,6 +46,8 @@ export interface PlayerState {
   /** Shared by the map modes (Explore, Scanner): dataset, date and frame status. */
   explore: ExploreState;
   scan: ScanState;
+  /** Ear Test settings. */
+  ear: { difficulty: EarDifficulty; set: EarSet };
   /** The two records loaded in Duet mode. */
   duet: { a: string; b: string };
   datasetId: string;
@@ -63,6 +68,7 @@ export interface PlayerState {
   setExplore: (patch: Partial<ExploreState>) => void;
   setScan: (patch: Partial<ScanState>) => void;
   setDuet: (patch: Partial<{ a: string; b: string }>) => void;
+  setEar: (patch: Partial<{ difficulty: EarDifficulty; set: EarSet }>) => void;
   /** Load a different time series in Timeline mode (resets to its first year). */
   setDatasetId: (id: string) => void;
   setIndex: (i: number) => void;
@@ -93,6 +99,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   },
   scan: { column: 0, isScanning: false, durationSec: 30, announceEveryDeg: 60 },
   duet: { a: 'co2-mauna-loa', b: 'global-temperature' },
+  ear: { difficulty: 'easy', set: 'mixed' },
   datasetId: 'arctic-sea-ice-september',
   index: 0,
   isPlaying: false,
@@ -108,6 +115,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   setMode: (mode) => set({ mode, caption: '' }),
   setExplore: (patch) => set((s) => ({ explore: { ...s.explore, ...patch } })),
   setScan: (patch) => set((s) => ({ scan: { ...s.scan, ...patch } })),
+  setEar: (patch) => set((s) => ({ ear: { ...s.ear, ...patch } })),
   setDuet: (patch) => set((s) => ({ duet: { ...s.duet, ...patch }, index: 0, isPlaying: false })),
   setDatasetId: (datasetId) => set({ datasetId, index: 0, isPlaying: false, caption: '' }),
   setIndex: (index) => set({ index }),

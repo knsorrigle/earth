@@ -13,6 +13,7 @@ const seaIceSeries = toAnnualSeries(parseCsv(seaIceCsv), 'year', 'extent');
 
 export const arcticSeaIce: Dataset = {
   id: 'arctic-sea-ice-september',
+  compare: { subject: 'Arctic sea ice', higher: 'had more sea ice', lower: 'had less sea ice' },
   title: 'Arctic Sea Ice',
   unit: 'million km²',
   unitSpoken: 'million square kilometres',
@@ -52,6 +53,7 @@ function recentDate(daysAgo: number): string {
 
 export const seaSurfaceTemperature: Dataset = {
   id: 'sea-surface-temperature',
+  compare: { subject: 'sea surface temperature', higher: 'has warmer water', lower: 'has colder water' },
   title: 'Sea Surface Temperature',
   unit: '°C',
   unitSpoken: 'degrees Celsius',
@@ -100,6 +102,7 @@ const gistempSeries = toAnnualSeries(parseCsv(gistempCsv, { headerStartsWith: 'Y
 
 export const globalTemperature: Dataset = {
   id: 'global-temperature',
+  compare: { subject: 'global temperature', higher: 'was warmer', lower: 'was cooler' },
   title: 'Global Temperature',
   unit: '°C',
   unitSpoken: 'degrees Celsius',
@@ -137,6 +140,7 @@ const co2Series = toAnnualSeries(parseCsv(co2Csv), 'year', 'mean');
 
 export const carbonDioxide: Dataset = {
   id: 'co2-mauna-loa',
+  compare: { subject: 'carbon dioxide', higher: 'had more carbon dioxide', lower: 'had less carbon dioxide' },
   title: 'Carbon Dioxide (CO₂)',
   unit: 'ppm',
   unitSpoken: 'parts per million',

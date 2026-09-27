@@ -82,7 +82,8 @@ function getColormap(dataset: Dataset, signal: AbortSignal): Promise<Colormap> {
  * Loads the GIBS frame for the selected date (shared by Explore and Scanner):
  * colormap, image, value grid, statistics and a spoken description.
  */
-export function useGibsFrame(dataset: Dataset, readyHint: string) {
+/** readyHint: spoken after the map loads; null keeps loading silent (e.g. behind the Ear Test). */
+export function useGibsFrame(dataset: Dataset, readyHint: string | null) {
   const spec = dataset.frame!;
   const layer = dataset.gibsLayerId!;
   const date = usePlayerStore((s) => s.explore.date);
@@ -91,7 +92,7 @@ export function useGibsFrame(dataset: Dataset, readyHint: string) {
 
   useEffect(() => {
     const key = `${layer}/${date}`;
-    const announce = usePlayerStore.getState().announce;
+    const announce = readyHint === null ? () => {} : usePlayerStore.getState().announce;
     const done = (f: LoadedFrame, fromMemory: boolean) => {
       setFrame(f);
       setExplore({ status: 'ready', source: f.source, shownDate: f.date, notice: f.notice ?? '' });

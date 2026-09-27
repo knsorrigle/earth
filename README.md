@@ -32,6 +32,12 @@ npm run build
   panned left, on the beat; record B is an FM bell, low register, panned right, half a beat later. Both use A minor
   pentatonic so they always harmonise. The legend states how closely they move together (Pearson correlation).
 
+- **Ear Test:** 8-question rounds. Two clips (three notes each, fixed loudness): the first in the left ear, the second in
+  the right. Pick which one is more / less with ← / →. Questions come from the timeline records (two years) or from
+  today's SST map (two named ocean regions, ocean pixels only). Difficulty = pitch distance between the clips (easy ≥ 5
+  scale steps, medium 3–4, hard 1–2; never the same note). The reveal speaks the real values and shows the two years on
+  the record or the two regions on the map. Best round per difficulty is kept in this browser only.
+
 ## Data
 
 - **Arctic sea ice, September extent, 1979–2025.** NSIDC Sea Ice Index v4 (G02135),
@@ -77,4 +83,6 @@ Space/K play-pause · ←/→ year · Shift+←/→ 10 years · Home/End · +/�
 
 **Duet:** same keys as Timeline (no hum)
 
-**Everywhere:** 1 Timeline · 2 Explore · 3 Scanner · 4 Duet · M mute
+**Ear Test:** Enter start / next · Space play both clips · Shift+←/→ play one clip · ←/→ answer first / second · I repeat question · S score · L how it works
+
+**Everywhere:** 1 Timeline · 2 Explore · 3 Scanner · 4 Duet · 5 Ear Test · M mute

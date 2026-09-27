@@ -276,6 +276,29 @@ export class AudioEngine {
     this.melody.triggerAttackRelease(note.freq, note.duration, time ?? Tone.now(), v);
   }
 
+  /**
+   * A mallet note at an exact time and stereo position (Ear Test clips:
+   * first clip left, second right). Returns when the note starts, in seconds from now.
+   */
+  playClipNote(freq: number, pan: number, delaySeconds: number, duration = 0.28, velocity = 0.6): void {
+    if (!this.ready) return;
+    const t = Tone.now() + delaySeconds;
+    this.melodyPanner.pan.setValueAtTime(pan, Math.max(Tone.now(), t - 0.02));
+    this.melody.triggerAttackRelease(freq, duration, t, velocity);
+  }
+
+  /** Gentle feedback: a rising pair for correct, a soft falling pair for wrong. */
+  playCue(kind: 'correct' | 'wrong', delaySeconds = 0): void {
+    if (!this.ready) return;
+    const t = Tone.now() + delaySeconds;
+    this.melodyPanner.pan.setValueAtTime(0, Math.max(Tone.now(), t - 0.02));
+    const notes = kind === 'correct' ? [76, 81] : [57, 52]; // E5→A5 / A3→E3
+    notes.forEach((m, i) => {
+      const f = 440 * Math.pow(2, (m - 69) / 12);
+      this.melody.triggerAttackRelease(f, 0.35, t + i * 0.16, kind === 'correct' ? 0.5 : 0.4);
+    });
+  }
+
   /** Second duet voice (FM bell). */
   playDuetNote(note: NoteSpec, time?: number): void {
     if (!this.ready) return;

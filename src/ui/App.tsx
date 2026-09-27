@@ -8,12 +8,15 @@ import { TimelineView } from './TimelineView';
 import { ExploreView } from './explore/ExploreView';
 import { ScannerView } from './scanner/ScannerView';
 import { DuetView } from './duet/DuetView';
+import { EarTestView } from './eartest/EarTestView';
+import { seaSurfaceTemperature } from '../data/registry';
 
 const MODES: { id: Mode; label: string; key: string }[] = [
   { id: 'timeline', label: 'Timeline', key: '1' },
   { id: 'explore', label: 'Explore map', key: '2' },
   { id: 'scanner', label: 'Scanner', key: '3' },
   { id: 'duet', label: 'Duet', key: '4' },
+  { id: 'eartest', label: 'Ear Test', key: '5' },
 ];
 
 export function App() {
@@ -70,6 +73,7 @@ export function App() {
           {mode === 'timeline' && <TimelineView key={`timeline-${timelineId}`} dataset={getDataset(timelineId)} />}
           {mode === 'explore' && <ExploreView key={`explore-${exploreId}`} dataset={getDataset(exploreId)} />}
           {mode === 'scanner' && <ScannerView key={`scanner-${exploreId}`} dataset={getDataset(exploreId)} />}
+          {mode === 'eartest' && <EarTestView key="eartest" sst={seaSurfaceTemperature} />}
           {mode === 'duet' && <DuetView key={`duet-${duet.a}-${duet.b}`} dsA={getDataset(duet.a)} dsB={getDataset(duet.b)} />}
         </main>
 

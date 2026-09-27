@@ -70,4 +70,11 @@ export interface Dataset {
   altText: string;
   /** How values become sound. */
   mapping: MappingConfig;
+  /** Words for Ear Test questions: "Which year had more sea ice?" */
+  compare?: {
+    /** Lower-case subject: "Arctic sea ice". */
+    subject: string;
+    higher: string;
+    lower: string;
+  };
 }
