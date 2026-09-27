@@ -10,6 +10,10 @@ import { ScannerView } from './scanner/ScannerView';
 import { DuetView } from './duet/DuetView';
 import { EarTestView } from './eartest/EarTestView';
 import { seaSurfaceTemperature } from '../data/registry';
+import { lazy, Suspense } from 'react';
+
+// three.js is large: load the globe after the accessible UI is up.
+const GlobeStage = lazy(() => import('./globe/GlobeStage'));
 
 const MODES: { id: Mode; label: string; key: string }[] = [
   { id: 'timeline', label: 'Timeline', key: '1' },
@@ -67,6 +71,10 @@ export function App() {
             ))}
           </div>
         </header>
+
+        <Suspense fallback={<div className="stage stage-placeholder" aria-hidden="true" />}>
+          <GlobeStage />
+        </Suspense>
 
         <main id="player" tabIndex={-1} role="tabpanel" aria-labelledby={`tab-${mode}`}>
           {/* Keyed by dataset so switching records starts each view (and its scheduler) fresh. */}

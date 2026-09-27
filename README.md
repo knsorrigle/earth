@@ -17,8 +17,19 @@ npm run build
 | `src/mapping` | Pure functions: data → pitch / velocity / reference tone / plain-words legend |
 | `src/audio` | Tone.js engine (voices, drone, reverb, limiter + soft-clip ceiling) and timeline scheduler |
 | `src/state` | Zustand store |
-| `src/ui` | React UI, keyboard control, live-region announcements |
+| `src/globe` | Globe maths (lat/lon ↔ sphere, tested against three.js), shaders, textures, WebGL detection |
+| `src/ui` | React UI, keyboard control, live-region announcements; `ui/globe` is the three.js stage |
 | `src/sampling` | GIBS frame loading (with offline fallback), colormap XML parsing, colour → value inversion (exact match, then nearest in CIE LAB), value grids and frame statistics |
+
+## Globe (Phase 6, step 1)
+
+A three.js globe (react-three-fiber) shows the active GIBS frame — the same image the Explore/Scanner maps use, so no
+extra requests. The surface shader is unlit and the renderer has no tone mapping, so colormap colours stay faithful;
+only the limb is darkened. Texture swaps crossfade in a shader and the old texture is disposed. Fresnel atmosphere,
+restrained bloom (threshold above the brightest data colour), faint static starfield, slow idle rotation with a
+Pause button, damped orbit controls. Adaptive DPR and bloom switched off when the performance monitor sees a drop.
+Reduced motion: no rotation, instant texture swaps. No WebGL: the globe is skipped and the 2D maps carry everything.
+The globe is lazy-loaded so the accessible UI never waits for three.js.
 
 ## Modes
 

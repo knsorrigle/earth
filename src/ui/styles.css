@@ -976,3 +976,45 @@ kbd {
     flex: 1 1 auto;
   }
 }
+
+/* ── Globe stage ─────────────────────────────── */
+.stage {
+  position: relative;
+  margin: -8px 0 28px;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #05070b;
+}
+.stage-canvas {
+  height: clamp(300px, 56vh, 640px);
+  cursor: grab;
+  touch-action: none;
+}
+.stage-canvas:active {
+  cursor: grabbing;
+}
+.stage-controls {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+}
+.stage-controls .btn {
+  background: rgba(11, 16, 23, 0.72);
+  backdrop-filter: blur(6px);
+}
+.stage-caption {
+  position: absolute;
+  left: 16px;
+  bottom: 12px;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  pointer-events: none;
+}
+.stage-placeholder {
+  height: clamp(300px, 56vh, 640px);
+}
