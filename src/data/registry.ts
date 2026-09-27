@@ -13,6 +13,7 @@ const seaIceSeries = toAnnualSeries(parseCsv(seaIceCsv), 'year', 'extent');
 
 export const arcticSeaIce: Dataset = {
   id: 'arctic-sea-ice-september',
+  place: { label: 'Arctic Ocean · north of ~60° N', spoken: 'the Arctic Ocean' },
   compare: { subject: 'Arctic sea ice', higher: 'had more sea ice', lower: 'had less sea ice' },
   title: 'Arctic Sea Ice',
   unit: 'million km²',
@@ -102,6 +103,7 @@ const gistempSeries = toAnnualSeries(parseCsv(gistempCsv, { headerStartsWith: 'Y
 
 export const globalTemperature: Dataset = {
   id: 'global-temperature',
+  place: { label: 'Whole globe · land + ocean', spoken: 'the whole globe, land and ocean' },
   compare: { subject: 'global temperature', higher: 'was warmer', lower: 'was cooler' },
   title: 'Global Temperature',
   unit: '°C',
@@ -140,6 +142,7 @@ const co2Series = toAnnualSeries(parseCsv(co2Csv), 'year', 'mean');
 
 export const carbonDioxide: Dataset = {
   id: 'co2-mauna-loa',
+  place: { label: 'Mauna Loa, Hawaii · 19.5° N, 155.6° W', spoken: 'Mauna Loa Observatory, Hawaii' },
   compare: { subject: 'carbon dioxide', higher: 'had more carbon dioxide', lower: 'had less carbon dioxide' },
   title: 'Carbon Dioxide (CO₂)',
   unit: 'ppm',

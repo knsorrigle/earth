@@ -4,7 +4,7 @@ import { ScanScheduler } from '../../audio/scanScheduler';
 import type { Dataset } from '../../data/types';
 import { describeScannerMapping } from '../../mapping/legend';
 import { midiToNoteName } from '../../mapping/pitch';
-import { DEFAULT_SCANNER, type ScanNote } from '../../mapping/scanner';
+import { columnNotes, DEFAULT_SCANNER, type ScanNote } from '../../mapping/scanner';
 import { formatLon, speakLon } from '../../sampling/geo';
 import { describeColumn, planScan } from '../../sampling/scan';
 import { SCAN_DURATIONS, usePlayerStore, type ScanDuration } from '../../state/playerStore';
@@ -37,11 +37,15 @@ export function useScanner(dataset: Dataset, frame: GibsFrame) {
       : `· silence (all land) · ${lon}`;
   };
 
+  const cfg = useMemo(
+    () => (frame.presence ? { ...DEFAULT_SCANNER, magnitude: 'logValue' as const, logDomain: dataset.mapping.domain } : DEFAULT_SCANNER),
+    [frame.presence, dataset],
+  );
+  /** Notes per column across the whole sweep (drives the HUD tape). */
+  const columnCounts = useMemo(() => (plan ? plan.columns.map((c) => columnNotes(c, plan, cfg).length) : null), [plan, cfg]);
+
   const schedulerRef = useRef<ScanScheduler | null>(null);
   if (!schedulerRef.current) {
-    const cfg = frame.presence
-      ? { ...DEFAULT_SCANNER, magnitude: 'logValue' as const, logDomain: dataset.mapping.domain }
-      : DEFAULT_SCANNER;
     schedulerRef.current = new ScanScheduler(engine, {
       onStep: (column, notes) => {
         const s = usePlayerStore.getState();
@@ -185,7 +189,7 @@ export function useScanner(dataset: Dataset, frame: GibsFrame) {
 
   const livePosition = useCallback(() => scheduler.audiblePosition(), [scheduler]);
 
-  return { plan, active, play, pause, toggle, seek, step, setDuration, changeSpeed, describeHere, describe, speakLegend, livePosition, ensureAudio };
+  return { plan, active, columnCounts, play, pause, toggle, seek, step, setDuration, changeSpeed, describeHere, describe, speakLegend, livePosition, ensureAudio };
 }
 
 export type ScannerApi = ReturnType<typeof useScanner>;

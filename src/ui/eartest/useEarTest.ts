@@ -81,6 +81,7 @@ export function useEarTest(sst: Dataset, frame: GibsFrame) {
   const [qNum, setQNum] = useState(0);
   const [choice, setChoice] = useState<0 | 1 | null>(null);
   const [score, setScore] = useState<Score>(EMPTY_SCORE);
+  const [results, setResults] = useState<(boolean | null)[]>(() => Array(ROUND_LENGTH).fill(null));
   const [playing, setPlaying] = useState<0 | 1 | null>(null);
   const [best, setBest] = useState<number | null>(() => loadBest(difficulty));
   const rng = useRef(mulberry32((Date.now() ^ (Math.random() * 0x7fffffff)) >>> 0));
@@ -100,6 +101,7 @@ export function useEarTest(sst: Dataset, frame: GibsFrame) {
       setPhase('intro');
     }
     setScore(EMPTY_SCORE);
+    setResults(Array(ROUND_LENGTH).fill(null));
     setQuestion(null);
   }, [difficulty, set]);
 
@@ -224,6 +226,7 @@ export function useEarTest(sst: Dataset, frame: GibsFrame) {
 
   const start = useCallback(() => {
     setScore(EMPTY_SCORE);
+    setResults(Array(ROUND_LENGTH).fill(null));
     recentPairs.current = [];
     ask(1);
   }, [ask]);
@@ -234,6 +237,7 @@ export function useEarTest(sst: Dataset, frame: GibsFrame) {
       const right = c === question.answer;
       const next = applyAnswer(score, right);
       setScore(next);
+      setResults((r) => r.map((v, i) => (i === qNum - 1 ? right : v)));
       setChoice(c);
       setPhase('revealed');
       clearTimers();
@@ -304,6 +308,7 @@ export function useEarTest(sst: Dataset, frame: GibsFrame) {
     qNum,
     choice,
     score,
+    results,
     best,
     playing,
     regionCount: regionPool.length,

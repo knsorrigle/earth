@@ -8,6 +8,9 @@ import { Settings, Transport } from './Transport';
 import { KeyboardHelp, Legend } from './Legend';
 import { DatasetPicker } from './DatasetPicker';
 import { getDataset, TIMELINE_DATASETS } from '../data/registry';
+import { useMemo } from 'react';
+import { normaliseHeights, shortLegend } from './hud/hudModel';
+import { usePublishHud } from './hud/usePublishHud';
 
 export function TimelineView({ dataset }: { dataset: Dataset }) {
   const api = usePlayer(dataset);
@@ -15,6 +18,27 @@ export function TimelineView({ dataset }: { dataset: Dataset }) {
   // The year index is shared with Duet, which can have more years: clamp on the way in.
   const index = Math.min(usePlayerStore((s) => s.index), api.events.length - 1);
   const event = api.events[index];
+
+  const years = useMemo(() => api.events.map((e) => e.year), [api.events]);
+  const heights = useMemo(() => normaliseHeights(api.events.map((e) => e.value)), [api.events]);
+  const d = event.deviation;
+  usePublishHud({
+    mode: 'Timeline',
+    dataset: dataset.title,
+    date: String(event.year),
+    values: [
+      {
+        value: event.value.toFixed(dataset.decimals),
+        unit: dataset.unit,
+        spoken: `${event.value.toFixed(dataset.decimals)} ${dataset.unitSpoken}`,
+        delta: `${d > 0 ? '+' : d < 0 ? '−' : '±'}${Math.abs(d).toFixed(dataset.decimals)} vs ${api.reference.label}`,
+      },
+    ],
+    place: dataset.place?.label ?? '',
+    placeSpoken: dataset.place?.spoken,
+    legend: shortLegend('timeline', dataset.mapping, { refLabel: api.reference.label }),
+    scrub: { kind: 'years', years, heights, index, onSeek: (i) => void api.seek(i, { announce: false }) },
+  });
 
   return (
     <>

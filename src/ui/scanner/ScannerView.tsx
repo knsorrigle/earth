@@ -12,6 +12,9 @@ import { DateBar, shiftDate } from '../map/DateBar';
 import { MapCanvas, type ScanOverlay } from '../map/MapCanvas';
 import { useGibsFrame } from '../map/useGibsFrame';
 import { SCAN_BANDS, SCAN_COLUMNS, useScanner, type ScannerApi } from './useScanner';
+import { normaliseHeights, shortLegend } from '../hud/hudModel';
+import { usePublishHud } from '../hud/usePublishHud';
+import { speakLon } from '../../sampling/geo';
 
 const SCANNER_HINT = 'Press space to scan, arrow keys to step, I to describe this line.';
 
@@ -37,6 +40,31 @@ export function ScannerView({ dataset }: { dataset: Dataset }) {
   const setScan = usePlayerStore((s) => s.setScan);
   const reduced = useReducedMotion() ?? false;
   const column = api.plan?.columns[scan.column];
+  const ex = usePlayerStore((s) => s.explore);
+  // Tape ticks: how many band notes each column plays (the chord's thickness along the sweep).
+  const tickHeights = useMemo(() => (api.columnCounts ? normaliseHeights(api.columnCounts) : undefined), [api.columnCounts]);
+  usePublishHud({
+    mode: 'Scanner',
+    dataset: dataset.title,
+    date: ex.shownDate ?? ex.date,
+    source: `${scan.isScanning ? 'scanning' : 'paused'} · ${scan.durationSec}s sweep`,
+    values: [
+      {
+        value: `${api.active.length}/${SCAN_BANDS}`,
+        unit: 'bands',
+        spoken: `${api.active.length} of ${SCAN_BANDS} bands sounding`,
+      },
+    ],
+    place: column ? formatLon(column.lon, 1) : '—',
+    placeSpoken: column ? speakLon(column.lon, 1) : undefined,
+    legend: shortLegend('scanner', dataset.mapping, { presence: frame.presence }),
+    scrub: {
+      kind: 'lon',
+      lon: column ? column.lon : -180,
+      heights: tickHeights,
+      onSeek: (lon) => void api.seek(Math.min(SCAN_COLUMNS - 1, Math.floor(((lon + 180) / 360) * SCAN_COLUMNS)), { announce: false }),
+    },
+  });
 
   const overlay: ScanOverlay | null = useMemo(
     () =>

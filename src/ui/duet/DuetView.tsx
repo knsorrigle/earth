@@ -7,6 +7,9 @@ import { Settings, Transport } from '../Transport';
 import { useKeyboardShortcuts } from '../useKeyboardShortcuts';
 import { DuetChart } from './DuetChart';
 import { useDuet } from './useDuet';
+import { useMemo } from 'react';
+import { normaliseHeights, shortLegend } from '../hud/hudModel';
+import { usePublishHud } from '../hud/usePublishHud';
 
 export function DuetView({ dsA, dsB }: { dsA: Dataset; dsB: Dataset }) {
   const api = useDuet(dsA, dsB);
@@ -16,6 +19,41 @@ export function DuetView({ dsA, dsB }: { dsA: Dataset; dsB: Dataset }) {
   const setDuet = usePlayerStore((s) => s.setDuet);
   const { steps, refA, refB } = api.duet;
   const st = steps[Math.min(index, steps.length - 1)];
+  const years = useMemo(() => steps.map((x) => x.year), [steps]);
+  const heightsA = useMemo(() => normaliseHeights(steps.map((x) => x.a.value)), [steps]);
+  const heightsB = useMemo(() => normaliseHeights(steps.map((x) => x.b.value)), [steps]);
+  const sign = (d: number) => (d > 0 ? '+' : d < 0 ? '−' : '±');
+  usePublishHud(
+    st
+      ? {
+          mode: 'Duet',
+          dataset: `${dsA.title} & ${dsB.title}`,
+          date: String(st.year),
+          values: [
+            {
+              label: `◀ ${dsA.title}`,
+              value: st.a.value.toFixed(dsA.decimals),
+              unit: dsA.unit,
+              spoken: `${st.a.value.toFixed(dsA.decimals)} ${dsA.unitSpoken}`,
+              delta: `${sign(st.a.deviation)}${Math.abs(st.a.deviation).toFixed(dsA.decimals)} vs ${refA.label}`,
+              voice: 'a',
+            },
+            {
+              label: `${dsB.title} ▶`,
+              value: st.b.value.toFixed(dsB.decimals),
+              unit: dsB.unit,
+              spoken: `${st.b.value.toFixed(dsB.decimals)} ${dsB.unitSpoken}`,
+              delta: `${sign(st.b.deviation)}${Math.abs(st.b.deviation).toFixed(dsB.decimals)} vs ${refB.label}`,
+              voice: 'b',
+            },
+          ],
+          place: [dsA.place?.label, dsB.place?.label].filter(Boolean).join('  ·  '),
+          placeSpoken: [dsA.place?.spoken, dsB.place?.spoken].filter(Boolean).join(' and '),
+          legend: shortLegend('duet', null, { titleA: dsA.title, titleB: dsB.title }),
+          scrub: { kind: 'years', years, heights: heightsA, heightsB, index: Math.min(index, steps.length - 1), onSeek: (i) => void api.seek(i, { announce: false }) },
+        }
+      : null,
+  );
 
   const pick = (slot: 'a' | 'b', id: string) => {
     setDuet({ [slot]: id });

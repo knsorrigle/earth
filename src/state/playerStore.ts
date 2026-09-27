@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { HudState } from '../ui/hud/hudModel';
 
 export type AnnounceEvery = 0 | 1 | 5 | 10;
 
@@ -46,6 +47,9 @@ export interface PlayerState {
   /** Shared by the map modes (Explore, Scanner): dataset, date and frame status. */
   explore: ExploreState;
   scan: ScanState;
+  /** What the globe HUD shows; published by the active mode. */
+  hud: HudState | null;
+  hudLegend: boolean;
   /** Ear Test settings. */
   ear: { difficulty: EarDifficulty; set: EarSet };
   /** The two records loaded in Duet mode. */
@@ -69,6 +73,8 @@ export interface PlayerState {
   setScan: (patch: Partial<ScanState>) => void;
   setDuet: (patch: Partial<{ a: string; b: string }>) => void;
   setEar: (patch: Partial<{ difficulty: EarDifficulty; set: EarSet }>) => void;
+  setHud: (hud: HudState | null) => void;
+  setHudLegend: (open: boolean) => void;
   /** Load a different time series in Timeline mode (resets to its first year). */
   setDatasetId: (id: string) => void;
   setIndex: (i: number) => void;
@@ -100,6 +106,8 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   scan: { column: 0, isScanning: false, durationSec: 30, announceEveryDeg: 60 },
   duet: { a: 'co2-mauna-loa', b: 'global-temperature' },
   ear: { difficulty: 'easy', set: 'mixed' },
+  hud: null,
+  hudLegend: true,
   datasetId: 'arctic-sea-ice-september',
   index: 0,
   isPlaying: false,
@@ -115,6 +123,8 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   setMode: (mode) => set({ mode, caption: '' }),
   setExplore: (patch) => set((s) => ({ explore: { ...s.explore, ...patch } })),
   setScan: (patch) => set((s) => ({ scan: { ...s.scan, ...patch } })),
+  setHud: (hud) => set({ hud }),
+  setHudLegend: (hudLegend) => set({ hudLegend }),
   setEar: (patch) => set((s) => ({ ear: { ...s.ear, ...patch } })),
   setDuet: (patch) => set((s) => ({ duet: { ...s.duet, ...patch }, index: 0, isPlaying: false })),
   setDatasetId: (datasetId) => set({ datasetId, index: 0, isPlaying: false, caption: '' }),

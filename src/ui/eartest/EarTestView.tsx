@@ -5,6 +5,9 @@ import { usePlayerStore, type EarDifficulty, type EarSet } from '../../state/pla
 import { useGibsFrame } from '../map/useGibsFrame';
 import { RevealRegions, RevealSparkline } from './RevealVisuals';
 import { ROUND_LENGTH, useEarTest, type EarTestApi } from './useEarTest';
+import { shortLegend } from '../hud/hudModel';
+import { usePublishHud } from '../hud/usePublishHud';
+import { scoreText } from '../../game/earTest';
 
 export const EAR_SHORTCUTS: { keys: string; action: string }[] = [
   { keys: 'Enter', action: 'Start / next question' },
@@ -23,6 +26,18 @@ export function EarTestView({ sst }: { sst: Dataset }) {
   const ear = usePlayerStore((s) => s.ear);
   const setEar = usePlayerStore((s) => s.setEar);
   const { phase, question: q, score } = api;
+  const revealed = phase === 'revealed' && q;
+  usePublishHud({
+    mode: 'Ear Test',
+    dataset: q ? (q.kind === 'timeline' ? api.datasetOf(q).title : 'Ocean regions') : 'Can you hear the difference?',
+    date: phase === 'question' || phase === 'revealed' ? `question ${api.qNum} / ${ROUND_LENGTH}` : phase === 'done' ? 'round complete' : 'ready',
+    source: ear.difficulty,
+    values: [{ value: `${score.correct}/${score.answered}`, unit: 'correct', spoken: scoreText(score) }],
+    // Places are only revealed after answering, so the HUD can't give the answer away.
+    place: revealed ? `1 ${q.items[0].label}  ·  2 ${q.items[1].label}` : '',
+    legend: shortLegend('eartest', null),
+    scrub: { kind: 'progress', results: api.results, current: Math.max(0, api.qNum - 1) },
+  });
 
   return (
     <>

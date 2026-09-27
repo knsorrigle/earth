@@ -31,6 +31,15 @@ Pause button, damped orbit controls. Adaptive DPR and bloom switched off when th
 Reduced motion: no rotation, instant texture swaps. No WebGL: the globe is skipped and the 2D maps carry everything.
 The globe is lazy-loaded so the accessible UI never waits for three.js.
 
+## HUD (Phase 6, step 2)
+
+Each mode publishes a small `HudState` (mode, dataset, date/source, values, place, plain-words legend, scrubber) to
+the store; the HUD over the globe renders it. Corners: mode + dataset (with the legend), date + source, value(s) +
+difference from the reference, place / lat-lon. The bottom scrubber is data-driven: Timeline = a vinyl groove whose
+groove heights are the yearly values; Duet = two interleaved grooves (A up, B down); Scanner = a tape whose ticks show
+how many bands sound at each 5° column; Explore = a longitude tape; Ear Test = 8 result segments. The HUD is
+`aria-hidden` (its facts are already announced by the mode); **H** or the "Read HUD" button speaks all of it.
+
 ## Modes
 
 - **Timeline:** one note per year; pitch = value; a hum tuned to the reference year.

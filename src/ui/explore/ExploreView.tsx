@@ -12,6 +12,9 @@ import { DatasetPicker } from '../DatasetPicker';
 import { selectMapDataset } from '../map/selectMapDataset';
 import { MAP_DATASETS } from '../../data/registry';
 import { useExplore, type ExploreApi } from './useExplore';
+import { shortLegend } from '../hud/hudModel';
+import { usePublishHud } from '../hud/usePublishHud';
+import { speakLatLon } from '../../sampling/geo';
 
 const EXPLORE_HINT = 'Use the arrow keys to move, F to describe the map.';
 
@@ -33,6 +36,17 @@ export function ExploreView({ dataset }: { dataset: Dataset }) {
   const caption = usePlayerStore((s) => s.caption);
   const reading = api.readingAt(ex.cursor.lat, ex.cursor.lon);
   const encoding = frame.presence ? 'presence' : 'colormap';
+  usePublishHud({
+    mode: 'Explore',
+    dataset: dataset.title,
+    date: ex.shownDate ?? ex.date,
+    source: ex.status === 'ready' ? (ex.source === 'live' ? 'live · NASA GIBS' : 'saved copy') : ex.status === 'loading' ? 'loading…' : '',
+    values: reading ? [{ value: reading.display, unit: reading.unit, spoken: reading.valueSpoken }] : [],
+    place: formatLatLon(ex.cursor.lat, ex.cursor.lon),
+    placeSpoken: speakLatLon(ex.cursor.lat, ex.cursor.lon),
+    legend: shortLegend('explore', dataset.mapping, { presence: frame.presence }),
+    scrub: { kind: 'lon', lon: ex.cursor.lon, onSeek: (lon) => void api.moveTo(ex.cursor.lat, lon, 'click') },
+  });
   const { start } = dataset.dateRange;
 
   return (

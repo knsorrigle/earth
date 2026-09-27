@@ -11,6 +11,7 @@ import { makeGlobeTexture } from '../../globe/texture';
 import { hasWebGL } from '../../globe/webgl';
 import { usePlayerStore } from '../../state/playerStore';
 import { useGibsFrame } from '../map/useGibsFrame';
+import { Hud } from '../hud/Hud';
 
 const FADE_MS = 900;
 const RIM = new Color('#7cc8ff');
@@ -208,14 +209,13 @@ export default function GlobeStage() {
           </Canvas>
         </GlobeBoundary>
       </div>
-      <div className="stage-controls">
-        <button type="button" className="btn small ghost" onClick={() => setRotating((r) => !r)} aria-pressed={!rotating}>
-          {rotating ? 'Pause rotation' : 'Resume rotation'}
-        </button>
-      </div>
-      <p className="stage-caption mono" aria-hidden="true">
-        {dataset.title} · {shownDate ?? '…'} · NASA GIBS
-      </p>
+      <Hud
+        controls={
+          <button type="button" className="btn small ghost" onClick={() => setRotating((r) => !r)} aria-pressed={!rotating}>
+            {rotating ? 'Pause rotation' : 'Resume rotation'}
+          </button>
+        }
+      />
     </section>
   );
 }

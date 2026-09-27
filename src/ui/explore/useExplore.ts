@@ -28,6 +28,8 @@ export interface Reading {
   /** Changes when the reading changes enough to re-announce / re-vibrate. */
   key: string;
   spoken: string;
+  /** Just the value, spoken (no place). */
+  valueSpoken: string;
   caption: string;
   /** Short value for the big readout, and its unit (may be empty). */
   display: string;
@@ -66,6 +68,7 @@ export function useExplore(dataset: Dataset, frame: GibsFrame) {
           lat,
           lon,
           key: `${word}|${ocean}`,
+          valueSpoken: ocean ? 'ocean, no fires' : `${word}, ${(f * 100).toFixed(2)} percent of nearby land`,
           spoken:
             (ocean ? 'Ocean. ' : '') +
             `${cap(word)} within ${PRESENCE_RADIUS_KM} kilometres` +
@@ -97,6 +100,7 @@ export function useExplore(dataset: Dataset, frame: GibsFrame) {
         lat: smp.lat,
         lon: smp.lon,
         key: String(smp.bin),
+        valueSpoken: speakEntry(smp.entry, words),
         spoken: `${speakEntry(smp.entry, words)}. ${where}`,
         caption:
           `${midi !== null ? `♪ ${midiToNoteName(midi)}` : '≈ rushing sound (land / no data)'} · ` +

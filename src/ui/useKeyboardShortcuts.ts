@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { usePlayerStore } from '../state/playerStore';
 import type { TimelineControls } from './usePlayer';
+import { hudSummary } from './hud/hudModel';
 
 const TEMPO_STEP = 10;
 
@@ -15,6 +16,7 @@ export const SHORTCUTS: { keys: string; action: string }[] = [
   { keys: 'D', action: 'Reference hum on / off' },
   { keys: 'M', action: 'Mute / unmute' },
   { keys: '1 – 5', action: 'Timeline / Explore / Scanner / Duet / Ear Test' },
+  { keys: 'H', action: 'Read the globe HUD' },
 ];
 
 /**
@@ -53,6 +55,11 @@ export function useGlobalKeys() {
           if (s.mode !== 'duet') s.setMode('duet');
           s.announce('Duet mode');
           break;
+        case 'h':
+        case 'H': {
+          if (s.hud) s.announce(hudSummary(s.hud));
+          break;
+        }
         case '5':
           if (s.mode !== 'eartest') s.setMode('eartest');
           s.announce('Ear Test. Press Enter to start.');
