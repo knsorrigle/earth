@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildTimeline, referenceTone } from './timeline';
 import { deviationToVelocity, bpmToSecondsPerStep } from './dynamics';
-import { describeMapping } from './legend';
+import { describeExploreMapping, describeMapping } from './legend';
 import type { MappingConfig } from './types';
 
 const cfg: MappingConfig = {
@@ -65,5 +65,14 @@ describe('describeMapping', () => {
   });
   it('respects invert', () => {
     expect(describeMapping({ ...cfg, invert: true }).join(' ')).toContain('Higher pitch means less sea ice');
+  });
+});
+
+describe('describeExploreMapping', () => {
+  it('explains pitch, pan and land', () => {
+    const text = describeExploreMapping({ ...cfg, higherMeans: 'warmer water', lowerMeans: 'colder water' }).join(' ');
+    expect(text).toContain('Higher pitch means warmer water');
+    expect(text).toContain('left ear');
+    expect(text).toContain('land or no data');
   });
 });

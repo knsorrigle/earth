@@ -18,7 +18,7 @@ npm run build
 | `src/audio` | Tone.js engine (voices, drone, reverb, limiter + soft-clip ceiling) and timeline scheduler |
 | `src/state` | Zustand store |
 | `src/ui` | React UI, keyboard control, live-region announcements |
-| `src/sampling` | *(Phase 2)* GIBS frame sampling + colormap inversion |
+| `src/sampling` | GIBS frame loading (with offline fallback), colormap XML parsing, colour → value inversion (exact match, then nearest in CIE LAB), value grids and frame statistics |
 
 ## Data
 
@@ -28,6 +28,22 @@ npm run build
   Citation: Fetterer, F., Knowles, K., Meier, W. N., Savoie, M., Windnagel, A. K. & Stafford, T. (2025).
   Sea Ice Index. (G02135, Version 4). NSIDC. https://doi.org/10.7265/a98x-0f50
 
+- **Sea surface temperature, daily global map.** GHRSST L4 MUR 0.25° v4.2 (`MUR25-JPL-L4-GLOB-v04.2`),
+  JPL MUR MEaSUREs Project, https://doi.org/10.5067/GHM25-4FJ42, served by NASA GIBS as layer
+  `GHRSST_L4_MUR25_Sea_Surface_Temperature` (verified in the GIBS EPSG:4326 WMTS capabilities).
+  Frames are requested from the GIBS WMS at 1440×720 (the product's native 0.25° grid) and converted back
+  to °C with the layer's colormap, `https://gibs.earthdata.nasa.gov/colormaps/v1.3/GHRSST_Sea_Surface_Temperature.xml`
+  (215 bins of 0.15 °C; transparent = land / no data).
+  Offline fallback: `public/frames/<layer>/<date>.png` (2025-09-01, 2026-03-01, 2026-09-01) and
+  `public/colormaps/`, fetched from the same WMS on 2026-09-28.
+
 ## Keyboard
 
+**Timeline:**
+
+
 Space/K play-pause · ←/→ year · Shift+←/→ 10 years · Home/End · +/− tempo · I where am I · L legend · D hum · M mute
+
+**Explore map:** arrows move 1° · Shift+arrows 10° · I value + location · F describe the map · L legend · [ / ] previous / next day · M mute
+
+**Everywhere:** 1 Timeline · 2 Explore

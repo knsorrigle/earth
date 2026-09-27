@@ -1,6 +1,6 @@
 import * as Tone from 'tone';
 
-export type ChannelId = 'melody' | 'drone';
+export type ChannelId = 'melody' | 'drone' | 'explore';
 
 export interface NoteSpec {
   freq: number;
@@ -15,6 +15,8 @@ export interface NoteSpec {
  *
  *   melody PolySynth -> lowpass -> Channel(melody) ─┐
  *   drone oscillators -> lowpass -> Gain -> Channel(drone) ─┤
+ *   explore Synth -> lowpass -> Panner ─┐                   │
+ *   land pink noise -> lowpass -> Gain -> Panner ─> Channel(explore) ─┤
  *                                   Reverb -> master Gain -> Limiter -> SoftClip -> Destination
  *
  * Normal playback peaks around -15 dBFS. The limiter tames dense passages, and
@@ -47,9 +49,20 @@ export class AudioEngine {
   private droneFilter!: Tone.Filter;
   private droneGain!: Tone.Gain;
   private droneActive = false;
+  private exploreSynth!: Tone.Synth;
+  private exploreFilter!: Tone.Filter;
+  private explorePanner!: Tone.Panner;
+  private landNoise!: Tone.Noise;
+  private landFilter!: Tone.Filter;
+  private landGain!: Tone.Gain;
+  private landPanner!: Tone.Panner;
+  private exploreSounding = false;
+
+  /** True only once the whole graph exists (build() is async: reverb IR generation). */
+  private built = false;
 
   get ready(): boolean {
-    return this.initPromise !== null && this.limiter !== undefined;
+    return this.built;
   }
 
   /** Must be called from a user gesture the first time (browser autoplay policy). */
@@ -78,6 +91,7 @@ export class AudioEngine {
     this.channels = {
       melody: new Tone.Channel({ volume: -2 }).connect(this.reverb),
       drone: new Tone.Channel({ volume: -14 }).connect(this.reverb),
+      explore: new Tone.Channel({ volume: 0 }).connect(this.reverb),
     };
 
     // Melody: soft mallet-like triangle, rounded off by a gentle lowpass.
@@ -99,6 +113,60 @@ export class AudioEngine {
     this.droneHigh = new Tone.Oscillator({ type: 'sine', frequency: 220, volume: -10 }).connect(this.droneFilter);
     this.droneLow.start();
     this.droneHigh.start();
+
+    // Explore: a sustained, slightly chorused tone that glides between values.
+    this.explorePanner = new Tone.Panner(0).connect(this.channels.explore);
+    this.exploreFilter = new Tone.Filter({ type: 'lowpass', frequency: 2000, rolloff: -12, Q: 0.3 }).connect(this.explorePanner);
+    this.exploreSynth = new Tone.Synth({
+      oscillator: { type: 'fattriangle', count: 2, spread: 14 },
+      envelope: { attack: 0.06, decay: 0.25, sustain: 0.65, release: 0.7 },
+      volume: 0,
+    }).connect(this.exploreFilter);
+
+    // Land / no data: soft filtered pink noise, like distant surf.
+    this.landPanner = new Tone.Panner(0).connect(this.channels.explore);
+    this.landGain = new Tone.Gain(0).connect(this.landPanner);
+    this.landFilter = new Tone.Filter({ type: 'lowpass', frequency: 650, rolloff: -24 }).connect(this.landGain);
+    this.landNoise = new Tone.Noise({ type: 'pink', volume: -10 }).connect(this.landFilter);
+    this.landNoise.start();
+    this.built = true;
+  }
+
+  /** Sound the value under the explore cursor. Glides if already sounding. */
+  exploreTone(freq: number, pan: number, velocity = 0.6): void {
+    if (!this.ready) return;
+    const now = Tone.now();
+    this.landGain.gain.rampTo(0, 0.08, now);
+    this.explorePanner.pan.rampTo(pan, 0.08, now);
+    if (this.exploreSounding) {
+      this.exploreSynth.frequency.rampTo(freq, 0.06, now);
+    } else {
+      this.exploreSynth.triggerAttack(freq, now, velocity);
+      this.exploreSounding = true;
+    }
+  }
+
+  /** Cursor is over land / no data. */
+  exploreLand(pan: number): void {
+    if (!this.ready) return;
+    const now = Tone.now();
+    if (this.exploreSounding) {
+      this.exploreSynth.triggerRelease(now);
+      this.exploreSounding = false;
+    }
+    this.landPanner.pan.rampTo(pan, 0.08, now);
+    this.landGain.gain.rampTo(1, 0.08, now);
+  }
+
+  /** Fade explore sound out (cursor left the map or stopped moving). */
+  exploreStop(fadeSeconds = 0.6): void {
+    if (!this.ready) return;
+    const now = Tone.now();
+    if (this.exploreSounding) {
+      this.exploreSynth.triggerRelease(now);
+      this.exploreSounding = false;
+    }
+    this.landGain.gain.rampTo(0, fadeSeconds, now);
   }
 
   playNote(note: NoteSpec, time?: number): void {
@@ -154,7 +222,9 @@ export class AudioEngine {
   dispose(): void {
     if (!this.ready) return;
     [this.droneLow, this.droneHigh, this.droneFilter, this.droneGain, this.melody, this.melodyFilter,
-      this.channels.melody, this.channels.drone, this.reverb, this.master, this.limiter, this.clipPreGain, this.clipper].forEach((n) => n.dispose());
+      this.exploreSynth, this.exploreFilter, this.explorePanner, this.landNoise, this.landFilter, this.landGain,
+      this.landPanner, this.channels.melody, this.channels.drone, this.channels.explore, this.reverb, this.master, this.limiter, this.clipPreGain, this.clipper].forEach((n) => n.dispose());
+    this.built = false;
     this.initPromise = null;
   }
 }

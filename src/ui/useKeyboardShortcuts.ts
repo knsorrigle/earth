@@ -14,6 +14,7 @@ export const SHORTCUTS: { keys: string; action: string }[] = [
   { keys: 'L', action: 'Say what the sounds mean' },
   { keys: 'D', action: 'Reference hum on / off' },
   { keys: 'M', action: 'Mute / unmute' },
+  { keys: '1 / 2', action: 'Timeline / Explore mode' },
 ];
 
 /**
@@ -21,6 +22,39 @@ export const SHORTCUTS: { keys: string; action: string }[] = [
  * natively (Space on buttons, arrows on sliders/selects, typing in text
  * fields) are left alone so standard behaviour is never broken.
  */
+/** Keys that work in every mode: mute and mode switching. */
+export function useGlobalKeys() {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      const tag = t?.tagName ?? '';
+      if (tag === 'TEXTAREA' || tag === 'SELECT' || (tag === 'INPUT' && !['range', 'checkbox'].includes((t as HTMLInputElement).type))) return;
+      const s = usePlayerStore.getState();
+      switch (e.key) {
+        case 'm':
+        case 'M':
+          s.setMuted(!s.muted);
+          s.announce(!s.muted ? 'Muted' : 'Sound on');
+          break;
+        case '1':
+          if (s.mode !== 'timeline') s.setMode('timeline');
+          s.announce('Timeline mode');
+          break;
+        case '2':
+          if (s.mode !== 'explore') s.setMode('explore');
+          s.announce('Explore mode');
+          break;
+        default:
+          return;
+      }
+      e.preventDefault();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+}
+
 export function useKeyboardShortcuts(api: PlayerApi) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -82,11 +116,6 @@ export function useKeyboardShortcuts(api: PlayerApi) {
         case 'D':
           s.setDroneEnabled(!s.droneEnabled);
           s.announce(`Reference hum ${!s.droneEnabled ? 'on' : 'off'}`);
-          break;
-        case 'm':
-        case 'M':
-          s.setMuted(!s.muted);
-          s.announce(!s.muted ? 'Muted' : 'Sound on');
           break;
         case 'l':
         case 'L':

@@ -74,7 +74,15 @@ export function usePlayer(dataset: Dataset) {
   useEffect(() => engine.setMasterMuted(muted), [muted]);
   useEffect(() => engine.setMasterVolume(volumeDb), [volumeDb]);
 
-  useEffect(() => () => scheduler.pause(), [scheduler]);
+  // Leaving Timeline mode: stop cleanly so nothing keeps sounding.
+  useEffect(
+    () => () => {
+      scheduler.pause();
+      engine.setDroneActive(false, 0.4);
+      usePlayerStore.getState().setPlaying(false);
+    },
+    [scheduler],
+  );
 
   const ensureAudio = useCallback(async () => {
     const first = !engine.ready;

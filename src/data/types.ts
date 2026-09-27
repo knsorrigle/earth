@@ -19,6 +19,21 @@ export interface DataSource {
   subset?: string;
 }
 
+export interface FrameSpec {
+  /** Pixel size requested from GIBS. Matches the product's native grid where possible. */
+  width: number;
+  height: number;
+  /** [west, south, east, north] */
+  bbox: [number, number, number, number];
+  /** Bundled fallback copy of the colormap XML (under /public). */
+  colormapFallback: string;
+  /** Dates with a bundled fallback frame in /public/frames/<layer>/<date>.png. */
+  cachedDates: string[];
+  defaultDate: string;
+  /** Meaning of values below the colormap's lowest bin, if any. */
+  belowRangeMeans?: string;
+}
+
 export interface Dataset {
   id: string;
   title: string;
@@ -33,6 +48,8 @@ export interface Dataset {
   gibsLayerId?: string;
   /** URL of the GIBS colormap XML for the layer (Phase 2+). */
   colormap?: string;
+  /** Global map frames from GIBS (Explore / Scanner modes). */
+  frame?: FrameSpec;
   /** Parsed annual time series, sorted by year. */
   timeSeries?: TimeSeriesPoint[];
   dateRange: { start: string; end: string };
