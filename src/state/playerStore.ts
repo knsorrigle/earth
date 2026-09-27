@@ -8,7 +8,7 @@ export interface Announcement {
   id: number;
 }
 
-export type Mode = 'timeline' | 'explore' | 'scanner';
+export type Mode = 'timeline' | 'explore' | 'scanner' | 'duet';
 
 export type FrameStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -43,6 +43,8 @@ export interface PlayerState {
   /** Shared by the map modes (Explore, Scanner): dataset, date and frame status. */
   explore: ExploreState;
   scan: ScanState;
+  /** The two records loaded in Duet mode. */
+  duet: { a: string; b: string };
   datasetId: string;
   /** Index of the point currently shown / last heard. */
   index: number;
@@ -60,6 +62,9 @@ export interface PlayerState {
   setMode: (mode: Mode) => void;
   setExplore: (patch: Partial<ExploreState>) => void;
   setScan: (patch: Partial<ScanState>) => void;
+  setDuet: (patch: Partial<{ a: string; b: string }>) => void;
+  /** Load a different time series in Timeline mode (resets to its first year). */
+  setDatasetId: (id: string) => void;
   setIndex: (i: number) => void;
   setPlaying: (p: boolean) => void;
   setBpm: (bpm: number) => void;
@@ -87,6 +92,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
     notice: '',
   },
   scan: { column: 0, isScanning: false, durationSec: 30, announceEveryDeg: 60 },
+  duet: { a: 'co2-mauna-loa', b: 'global-temperature' },
   datasetId: 'arctic-sea-ice-september',
   index: 0,
   isPlaying: false,
@@ -102,6 +108,8 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   setMode: (mode) => set({ mode, caption: '' }),
   setExplore: (patch) => set((s) => ({ explore: { ...s.explore, ...patch } })),
   setScan: (patch) => set((s) => ({ scan: { ...s.scan, ...patch } })),
+  setDuet: (patch) => set((s) => ({ duet: { ...s.duet, ...patch }, index: 0, isPlaying: false })),
+  setDatasetId: (datasetId) => set({ datasetId, index: 0, isPlaying: false, caption: '' }),
   setIndex: (index) => set({ index }),
   setPlaying: (isPlaying) => set({ isPlaying }),
   setBpm: (bpm) => set({ bpm: Math.round(Math.min(BPM_MAX, Math.max(BPM_MIN, bpm))) }),

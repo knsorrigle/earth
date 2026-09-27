@@ -33,6 +33,8 @@ export interface ScanPlan {
   columns: ScanColumn[];
   /** Min / max of the cell means per band across the whole frame (NaN if the band has no data). */
   bandRanges: { min: number; max: number }[];
+  /** Same, over strictly positive means only (for log-scaled presence layers). */
+  positiveRanges: { min: number; max: number }[];
 }
 
 function fmtLat(v: number): string {
@@ -102,19 +104,21 @@ export function planScan(grid: ValueGrid, columnCount: number, bandCount: number
     });
   }
 
-  const bandRanges = bands.map((_, b) => {
+  const rangeOf = (b: number, keep: (m: number) => boolean) => {
     let min = Infinity;
     let max = -Infinity;
     for (const col of columns) {
       const m = col.cells[b].mean;
-      if (m === null) continue;
+      if (m === null || !keep(m)) continue;
       if (m < min) min = m;
       if (m > max) max = m;
     }
     return Number.isFinite(min) ? { min, max } : { min: NaN, max: NaN };
-  });
+  };
+  const bandRanges = bands.map((_, b) => rangeOf(b, () => true));
+  const positiveRanges = bands.map((_, b) => rangeOf(b, (m) => m > 0));
 
-  return { bands, columns, bandRanges };
+  return { bands, columns, bandRanges, positiveRanges };
 }
 
 /** Column index for a longitude. */
@@ -125,10 +129,13 @@ export function columnAt(plan: ScanPlan, lon: number): number {
 }
 
 /** Spoken summary of one column: every band's value and ocean share. */
-export function describeColumn(plan: ScanPlan, column: number, unitSpoken: string, decimals: number): string {
+export function describeColumn(plan: ScanPlan, column: number, unitSpoken: string, decimals: number, presence = false): string {
   const col = plan.columns[column];
   const parts = col.cells.map((cell, b) => {
     const name = plan.bands[b].name;
+    if (presence) {
+      return cell.mean && cell.mean > 0 ? `${name}: fire on ${(cell.mean * 100).toFixed(2)} percent of the area` : `${name}: no fires`;
+    }
     if (cell.mean === null || cell.coverage < 0.01) return `${name}: land or no data`;
     const pct = Math.round(cell.coverage * 100);
     return `${name}: ${cell.mean.toFixed(decimals)} ${unitSpoken}${pct < 95 ? `, ${pct} percent ocean` : ''}`;

@@ -19,6 +19,15 @@ export interface ScannerConfig {
   velocity: [number, number];
   /** Hard cap on notes per step. */
   maxVoices: number;
+  /**
+   * What drives loudness and silence:
+   * - coverage: continuous fields (SST). Velocity follows how much of the cell has data; land is silent.
+   * - logValue: presence layers (fire). Only cells with detections sound; pitch within the band and
+   *   velocity follow log10 of the detected-area fraction.
+   */
+  magnitude: 'coverage' | 'logValue';
+  /** log10 range mapped to the velocity range in logValue mode. */
+  logDomain: [number, number];
 }
 
 export const DEFAULT_SCANNER: ScannerConfig = {
@@ -31,6 +40,8 @@ export const DEFAULT_SCANNER: ScannerConfig = {
   strumSeconds: 0.028,
   velocity: [0.18, 0.5],
   maxVoices: 8,
+  magnitude: 'coverage',
+  logDomain: [-4, -1],
 };
 
 /** Register of band i (0 = northernmost): north plays higher. */
@@ -56,12 +67,23 @@ export interface ScanNote {
  */
 export function columnNotes(column: ScanColumn, plan: ScanPlan, cfg: ScannerConfig = DEFAULT_SCANNER): ScanNote[] {
   const candidates: Omit<ScanNote, 'offset'>[] = [];
+  const log = cfg.magnitude === 'logValue';
   column.cells.forEach((cell, band) => {
-    if (cell.mean === null || cell.coverage < cfg.minCoverage) return;
-    const range = plan.bandRanges[band];
-    const domain: [number, number] = Number.isFinite(range.min) ? [range.min, range.max] : [cell.mean, cell.mean];
-    const midi = valueToMidi(cell.mean, { domain, midiRange: bandWindow(band, cfg), root: cfg.root, scale: cfg.scale });
-    const t = clamp((cell.coverage - cfg.minCoverage) / (1 - cfg.minCoverage), 0, 1);
+    if (cell.mean === null) return;
+    if (log ? cell.mean <= 0 : cell.coverage < cfg.minCoverage) return;
+    const v = log ? Math.log10(cell.mean) : cell.mean;
+    const range = log ? plan.positiveRanges[band] : plan.bandRanges[band];
+    let domain: [number, number] = Number.isFinite(range.min)
+      ? log
+        ? [Math.log10(range.min), Math.log10(range.max)]
+        : [range.min, range.max]
+      : [v, v];
+    // A band with a single fire level everywhere: put it mid-register rather than at the bottom.
+    if (domain[0] === domain[1]) domain = [domain[0] - 1, domain[1] + 1];
+    const midi = valueToMidi(v, { domain, midiRange: bandWindow(band, cfg), root: cfg.root, scale: cfg.scale });
+    const t = log
+      ? clamp((v - cfg.logDomain[0]) / (cfg.logDomain[1] - cfg.logDomain[0]), 0, 1)
+      : clamp((cell.coverage - cfg.minCoverage) / (1 - cfg.minCoverage), 0, 1);
     const velocity = cfg.velocity[0] + (cfg.velocity[1] - cfg.velocity[0]) * t;
     candidates.push({ band, midi, freq: midiToFreq(midi), velocity, value: cell.mean });
   });

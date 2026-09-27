@@ -35,7 +35,7 @@ export function Legend({ dataset, reference, onSpeak }: Props) {
           ))}
         </ul>
         <p className="muted small">
-          Hum pitch: {reference.noteName} = {reference.value.toFixed(dataset.decimals)} {dataset.unit} ({reference.year}).
+          Hum pitch: {reference.noteName} = {reference.value.toFixed(dataset.decimals)} {dataset.unit} ({reference.label}).
         </p>
       </div>
     </section>

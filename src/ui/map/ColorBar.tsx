@@ -33,3 +33,17 @@ export function ColorBar({ colormap, unit, ticks, marker, domain }: Props) {
     </div>
   );
 }
+
+/** Legend for presence layers: a single marker colour on the land/sea basemap. */
+export function PresenceKey({ rgb, label }: { rgb: [number, number, number]; label: string }) {
+  return (
+    <div className="presence-key" aria-hidden="true">
+      <span className="swatch" style={{ background: `rgb(${rgb.join(',')})` }} />
+      {label}
+      <span className="swatch land" />
+      Land
+      <span className="swatch sea" />
+      Ocean
+    </div>
+  );
+}

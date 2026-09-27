@@ -37,9 +37,11 @@ export function usePlayer(dataset: Dataset) {
   unitRef.current = unit;
   captionRef.current = caption;
 
-  const schedulerRef = useRef<TimelineScheduler | null>(null);
+  const schedulerRef = useRef<TimelineScheduler<NoteEvent> | null>(null);
   if (!schedulerRef.current) {
-    schedulerRef.current = new TimelineScheduler(engine, {
+    schedulerRef.current = new TimelineScheduler<NoteEvent>((ev, time, beat) => {
+      engine.playNote({ freq: ev.freq, velocity: ev.velocity, duration: Math.min(beat * 0.8, 1.2) }, time);
+    }, {
       onStep: (ev) => {
         const s = usePlayerStore.getState();
         s.setIndex(ev.index);
@@ -62,6 +64,8 @@ export function usePlayer(dataset: Dataset) {
   useEffect(() => {
     scheduler.setEvents(events);
     engine.setDroneFrequency(reference.freq);
+    const s = usePlayerStore.getState();
+    if (s.index >= events.length) s.setIndex(events.length - 1);
   }, [scheduler, events, reference]);
 
   // Mirror settings into the audio engine.
@@ -73,6 +77,9 @@ export function usePlayer(dataset: Dataset) {
   useEffect(() => engine.setChannelMuted('drone', !droneEnabled), [droneEnabled]);
   useEffect(() => engine.setMasterMuted(muted), [muted]);
   useEffect(() => engine.setMasterVolume(volumeDb), [volumeDb]);
+
+  // Timeline plays centred (Duet moves the melody voice left).
+  useEffect(() => engine.setMelodyPan(0), []);
 
   // Leaving Timeline mode: stop cleanly so nothing keeps sounding.
   useEffect(
@@ -177,3 +184,13 @@ export function usePlayer(dataset: Dataset) {
 }
 
 export type PlayerApi = ReturnType<typeof usePlayer>;
+
+/** What the shared transport buttons and timeline keyboard shortcuts need (Timeline and Duet). */
+export interface TimelineControls {
+  events: { length: number };
+  toggle: () => void;
+  step: (delta: number) => void;
+  seek: (index: number, opts?: { announce?: boolean; audition?: boolean }) => Promise<void> | void;
+  speakLegend: () => void;
+  speakCurrent: () => void;
+}

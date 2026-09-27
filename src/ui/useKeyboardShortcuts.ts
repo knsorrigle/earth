@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { usePlayerStore } from '../state/playerStore';
-import type { PlayerApi } from './usePlayer';
+import type { TimelineControls } from './usePlayer';
 
 const TEMPO_STEP = 10;
 
@@ -14,7 +14,7 @@ export const SHORTCUTS: { keys: string; action: string }[] = [
   { keys: 'L', action: 'Say what the sounds mean' },
   { keys: 'D', action: 'Reference hum on / off' },
   { keys: 'M', action: 'Mute / unmute' },
-  { keys: '1 / 2 / 3', action: 'Timeline / Explore / Scanner mode' },
+  { keys: '1 – 4', action: 'Timeline / Explore / Scanner / Duet' },
 ];
 
 /**
@@ -49,6 +49,10 @@ export function useGlobalKeys() {
           if (s.mode !== 'scanner') s.setMode('scanner');
           s.announce('Scanner mode');
           break;
+        case '4':
+          if (s.mode !== 'duet') s.setMode('duet');
+          s.announce('Duet mode');
+          break;
         default:
           return;
       }
@@ -59,7 +63,8 @@ export function useGlobalKeys() {
   }, []);
 }
 
-export function useKeyboardShortcuts(api: PlayerApi) {
+export function useKeyboardShortcuts(api: TimelineControls, opts: { drone?: boolean } = {}) {
+  const drone = opts.drone ?? true;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -118,6 +123,7 @@ export function useKeyboardShortcuts(api: PlayerApi) {
           break;
         case 'd':
         case 'D':
+          if (!drone) return;
           s.setDroneEnabled(!s.droneEnabled);
           s.announce(`Reference hum ${!s.droneEnabled ? 'on' : 'off'}`);
           break;
@@ -135,5 +141,5 @@ export function useKeyboardShortcuts(api: PlayerApi) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [api]);
+  }, [api, drone]);
 }

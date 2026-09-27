@@ -13,7 +13,9 @@ interface Props {
 export function Readout({ dataset, event, reference }: Props) {
   const caption = usePlayerStore((s) => s.caption);
   const d = event.deviation;
-  const pct = Math.round((d / reference.value) * 100);
+  // Percent change only makes sense against a real year's value, not an anomaly baseline of 0.
+  const showPct = !Number.isNaN(reference.year) && reference.value !== 0;
+  const pct = showPct ? Math.round((d / reference.value) * 100) : 0;
   const sign = d > 0 ? '+' : d < 0 ? '−' : '±';
 
   return (
@@ -36,8 +38,8 @@ export function Readout({ dataset, event, reference }: Props) {
       </div>
       <div className={`readout-delta ${d < 0 ? 'neg' : d > 0 ? 'pos' : ''}`}>
         {sign}
-        {Math.abs(d).toFixed(dataset.decimals)} ({sign}
-        {Math.abs(pct)}%) vs {reference.year}
+        {Math.abs(d).toFixed(dataset.decimals)}
+        {showPct && ` (${sign}${Math.abs(pct)}%)`} vs {reference.label}
       </div>
       <p className="caption" aria-label="Sound caption">
         {caption || 'Press Play or Space to listen.'}

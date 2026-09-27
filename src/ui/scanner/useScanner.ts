@@ -4,7 +4,7 @@ import { ScanScheduler } from '../../audio/scanScheduler';
 import type { Dataset } from '../../data/types';
 import { describeScannerMapping } from '../../mapping/legend';
 import { midiToNoteName } from '../../mapping/pitch';
-import type { ScanNote } from '../../mapping/scanner';
+import { DEFAULT_SCANNER, type ScanNote } from '../../mapping/scanner';
 import { formatLon, speakLon } from '../../sampling/geo';
 import { describeColumn, planScan } from '../../sampling/scan';
 import { SCAN_DURATIONS, usePlayerStore, type ScanDuration } from '../../state/playerStore';
@@ -26,6 +26,8 @@ export function useScanner(dataset: Dataset, frame: GibsFrame) {
   const dsRef = useRef(dataset);
   dsRef.current = dataset;
   const playStart = useRef(-1);
+  const presenceRef = useRef(frame.presence);
+  presenceRef.current = frame.presence;
 
   const caption = (column: number, notes: ScanNote[]) => {
     const p = planRef.current!;
@@ -37,6 +39,9 @@ export function useScanner(dataset: Dataset, frame: GibsFrame) {
 
   const schedulerRef = useRef<ScanScheduler | null>(null);
   if (!schedulerRef.current) {
+    const cfg = frame.presence
+      ? { ...DEFAULT_SCANNER, magnitude: 'logValue' as const, logDomain: dataset.mapping.domain }
+      : DEFAULT_SCANNER;
     schedulerRef.current = new ScanScheduler(engine, {
       onStep: (column, notes) => {
         const s = usePlayerStore.getState();
@@ -56,7 +61,7 @@ export function useScanner(dataset: Dataset, frame: GibsFrame) {
         setActive([]);
         s.announce('Scan complete at 180 degrees. Press space to scan again, or F to describe the map.');
       },
-    });
+    }, cfg);
   }
   const scheduler = schedulerRef.current;
 
@@ -107,7 +112,7 @@ export function useScanner(dataset: Dataset, frame: GibsFrame) {
     const s = usePlayerStore.getState();
     s.setScan({ isScanning: false });
     const p = planRef.current;
-    if (p) s.announce(`Paused. ${describeColumn(p, s.scan.column, dsRef.current.unitSpoken, dsRef.current.decimals)}`);
+    if (p) s.announce(`Paused. ${describeColumn(p, s.scan.column, dsRef.current.unitSpoken, dsRef.current.decimals, presenceRef.current)}`);
   }, [scheduler]);
 
   const toggle = useCallback(() => {
@@ -129,7 +134,7 @@ export function useScanner(dataset: Dataset, frame: GibsFrame) {
       const notes = scheduler.audition(c);
       setActive(notes);
       s.setCaption(caption(c, notes));
-      if (opts.announce !== false) s.announce(describeColumn(p, c, dsRef.current.unitSpoken, dsRef.current.decimals));
+      if (opts.announce !== false) s.announce(describeColumn(p, c, dsRef.current.unitSpoken, dsRef.current.decimals, presenceRef.current));
     },
     [scheduler, ensureAudio],
   );
@@ -165,14 +170,17 @@ export function useScanner(dataset: Dataset, frame: GibsFrame) {
   const describeHere = useCallback(() => {
     const p = planRef.current;
     if (!p) return;
-    usePlayerStore.getState().announce(describeColumn(p, usePlayerStore.getState().scan.column, dataset.unitSpoken, dataset.decimals));
+    usePlayerStore.getState().announce(describeColumn(p, usePlayerStore.getState().scan.column, dataset.unitSpoken, dataset.decimals, frame.presence));
   }, [dataset]);
 
   const describe = useCallback(() => usePlayerStore.getState().announce(frame.description), [frame.description]);
 
   const speakLegend = useCallback(
-    () => usePlayerStore.getState().announce(`Scanner. ${describeScannerMapping(dataset.mapping, SCAN_BANDS).join(' ')}`),
-    [dataset],
+    () =>
+      usePlayerStore
+        .getState()
+        .announce(`Scanner. ${describeScannerMapping(dataset.mapping, SCAN_BANDS, frame.presence ? 'presence' : 'colormap').join(' ')}`),
+    [dataset, frame.presence],
   );
 
   const livePosition = useCallback(() => scheduler.audiblePosition(), [scheduler]);

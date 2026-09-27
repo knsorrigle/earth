@@ -1,15 +1,16 @@
 import { useEffect } from 'react';
 import type { Dataset } from '../../data/types';
 import { describeExploreMapping } from '../../mapping/legend';
-import { displayEntry } from '../../sampling/describe';
 import { formatLatLon } from '../../sampling/geo';
-import { sampleGrid } from '../../sampling/grid';
 import { usePlayerStore } from '../../state/playerStore';
 import { shiftDate } from '../map/DateBar';
-import { ColorBar } from '../map/ColorBar';
+import { ColorBar, PresenceKey } from '../map/ColorBar';
 import { MapCanvas } from '../map/MapCanvas';
 import { useGibsFrame } from '../map/useGibsFrame';
 import { DateBar } from '../map/DateBar';
+import { DatasetPicker } from '../DatasetPicker';
+import { selectMapDataset } from '../map/selectMapDataset';
+import { MAP_DATASETS } from '../../data/registry';
 import { useExplore, type ExploreApi } from './useExplore';
 
 const EXPLORE_HINT = 'Use the arrow keys to move, F to describe the map.';
@@ -30,7 +31,8 @@ export function ExploreView({ dataset }: { dataset: Dataset }) {
   useExploreKeys(api, dataset);
   const ex = usePlayerStore((s) => s.explore);
   const caption = usePlayerStore((s) => s.caption);
-  const sample = frame.grid ? sampleGrid(frame.grid, ex.cursor.lat, ex.cursor.lon) : null;
+  const reading = api.readingAt(ex.cursor.lat, ex.cursor.lon);
+  const encoding = frame.presence ? 'presence' : 'colormap';
   const { start } = dataset.dateRange;
 
   return (
@@ -43,19 +45,28 @@ export function ExploreView({ dataset }: { dataset: Dataset }) {
         </div>
         <div className="readout">
           <div className="readout-year readout-explore">
-            <span className="num">{displayEntry(sample?.entry ?? null, dataset.decimals)}</span>
-            {sample?.entry && <span className="unit"> {dataset.unit}</span>}
+            <span className="num">{reading?.display ?? '—'}</span>
+            {reading?.unit && <span className="unit"> {reading.unit}</span>}
           </div>
           <div className="readout-delta mono">{formatLatLon(ex.cursor.lat, ex.cursor.lon)}</div>
           <p className="caption">{caption || 'Click the map or press an arrow key to start listening.'}</p>
         </div>
       </section>
 
+      <div className="picker-row">
+        <DatasetPicker
+          label="Map"
+          datasets={MAP_DATASETS}
+          value={dataset.id}
+          onChange={selectMapDataset}
+        />
+      </div>
       <DateBar dataset={dataset} />
 
       <figure className="map-figure">
         <MapCanvas
           bitmap={frame.bitmap}
+          underlay={frame.underlay}
           cursor={ex.cursor}
           label={`${dataset.title} map. Arrow keys move the cursor; F describes the map.`}
           describedBy="map-alt"
@@ -64,9 +75,10 @@ export function ExploreView({ dataset }: { dataset: Dataset }) {
           onActivate={() => void api.activate()}
           onLeave={api.leave}
         />
-        {frame.grid && (
-          <ColorBar colormap={frame.grid.colormap} unit="°" ticks={[0, 5, 10, 15, 20, 25, 30]} marker={sample?.entry?.value} domain={[-1, 33]} />
+        {frame.grid && !frame.presence && (
+          <ColorBar colormap={frame.grid.colormap} unit="°" ticks={[0, 5, 10, 15, 20, 25, 30]} marker={reading?.marker} domain={[-1, 33]} />
         )}
+        {frame.presence && <PresenceKey rgb={dataset.frame!.presenceRgb!} label="Fire detection (MODIS, Terra + Aqua)" />}
         <figcaption id="map-alt" className="chart-alt">
           {frame.description}
         </figcaption>
@@ -86,11 +98,13 @@ export function ExploreView({ dataset }: { dataset: Dataset }) {
             </div>
           </div>
           <ul className="legend-list">
-            {describeExploreMapping(dataset.mapping).map((l) => (
+            {describeExploreMapping(dataset.mapping, encoding).map((l) => (
               <li key={l}>{l}</li>
             ))}
           </ul>
-          <p className="muted small">On phones that support it, the device vibrates as you cross into warmer or colder water — longer pulses mean warmer.</p>
+          <p className="muted small">
+            On phones that support it, the device vibrates as the reading changes — longer pulses mean {dataset.mapping.higherMeans}.
+          </p>
         </section>
         <details className="panel help">
           <summary>

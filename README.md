@@ -28,6 +28,10 @@ npm run build
   (22.5° each). Band = register (north higher); within a band, pitch follows that band's own range across the frame, so
   regional contrasts are audible at every latitude; velocity follows ocean coverage; all-land cells are silent.
 
+- **Duet:** two time series on one shared timeline (the years both cover). Record A is a triangle mallet, high register,
+  panned left, on the beat; record B is an FM bell, low register, panned right, half a beat later. Both use A minor
+  pentatonic so they always harmonise. The legend states how closely they move together (Pearson correlation).
+
 ## Data
 
 - **Arctic sea ice, September extent, 1979–2025.** NSIDC Sea Ice Index v4 (G02135),
@@ -45,6 +49,21 @@ npm run build
   Offline fallback: `public/frames/<layer>/<date>.png` (2025-09-01, 2026-03-01, 2026-09-01) and
   `public/colormaps/`, fetched from the same WMS on 2026-09-28.
 
+- **Global temperature, 1880–2025.** NASA GISS GISTEMP v4, global land–ocean annual mean (J–D column) as anomaly vs
+  1951–1980, file `GLB.Ts+dSST.csv` from https://data.giss.nasa.gov/gistemp/tabledata_v4/ (bundled unmodified; the
+  incomplete current year, marked `***`, is skipped). Cite: GISTEMP Team, 2026: GISS Surface Temperature Analysis
+  (GISTEMP), version 4. NASA GISS. Dataset accessed 2026-09-28 at https://data.giss.nasa.gov/gistemp/; and Lenssen et al.
+  2024, doi:10.1029/2023JD040179.
+- **Carbon dioxide, 1959–2025.** NOAA GML Mauna Loa annual mean, `co2_annmean_mlo.csv` from
+  https://gml.noaa.gov/webdata/ccgg/trends/co2/ (bundled unmodified). Credit: Dr. Xin Lan, NOAA/GML and Dr. Ralph Keeling,
+  Scripps Institution of Oceanography.
+- **Active fires, daily map.** GIBS layer `MODIS_Combined_Thermal_Anomalies_All` (MODIS Terra + Aqua, FIRMS NRT,
+  MCD14DL v6.1NRT, https://doi.org/10.5067/FIRMS/MODIS/MCD14DL.NRT.0061), requested from the WMS with style `size5`.
+  GIBS draws every detection as one orange marker (236, 98, 16), so there is no colormap to invert; the app measures the
+  share of area covered by markers — a relative activity index, not burned area. Basemap and land mask: GIBS
+  `OSM_Land_Water_Map` (© OpenStreetMap contributors), bundled in `public/basemaps/`. Fallback frames for the same three
+  dates in `public/frames/MODIS_Combined_Thermal_Anomalies_All/`.
+
 ## Keyboard
 
 **Timeline:**
@@ -56,4 +75,6 @@ Space/K play-pause · ←/→ year · Shift+←/→ 10 years · Home/End · +/�
 
 **Scanner:** Space/K start-pause sweep · ←/→ step 5° · Shift+←/→ 30° · Home/End · +/− sweep speed · I describe the line under the beam · F describe the map · L legend · [ / ] day
 
-**Everywhere:** 1 Timeline · 2 Explore · 3 Scanner · M mute
+**Duet:** same keys as Timeline (no hum)
+
+**Everywhere:** 1 Timeline · 2 Explore · 3 Scanner · 4 Duet · M mute

@@ -19,16 +19,17 @@ export interface FrameRequest {
   width: number;
   height: number;
   bbox: BBox;
+  style?: string;
 }
 
-export function buildWmsGetMapUrl({ layer, date, width, height, bbox }: FrameRequest): string {
+export function buildWmsGetMapUrl({ layer, date, width, height, bbox, style = '' }: FrameRequest): string {
   const [w, s, e, n] = bbox;
   const params = new URLSearchParams({
     SERVICE: 'WMS',
     REQUEST: 'GetMap',
     VERSION: '1.3.0',
     LAYERS: layer,
-    STYLES: '',
+    STYLES: style,
     CRS: 'EPSG:4326',
     // WMS 1.3.0 + EPSG:4326 uses lat,lon axis order.
     BBOX: [s, w, n, e].join(','),
@@ -75,7 +76,7 @@ export interface Frame {
  * Decode an image to raw RGBA without colour management, so pixel values
  * are exactly what GIBS encoded.
  */
-async function fetchRgba(url: string, signal?: AbortSignal) {
+export async function fetchRgba(url: string, signal?: AbortSignal) {
   const res = await fetch(url, { signal, mode: 'cors' });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const type = res.headers.get('content-type') ?? '';
@@ -103,14 +104,22 @@ const MIN_COVERAGE = 0.05;
  */
 export async function loadFrame(
   req: FrameRequest,
-  opts: { baseUrl: string; cachedDates: string[]; signal?: AbortSignal; timeoutMs?: number },
+  opts: {
+    baseUrl: string;
+    cachedDates: string[];
+    signal?: AbortSignal;
+    timeoutMs?: number;
+    /** Sparse layers (fire points) are legitimately almost empty; skip the "no data" check. */
+    allowSparse?: boolean;
+  },
 ): Promise<Frame> {
   const { baseUrl, cachedDates, signal, timeoutMs = 15000 } = opts;
   let reason = '';
   try {
     const live = await fetchRgba(buildWmsGetMapUrl(req), withTimeout(signal, timeoutMs));
     if (opaqueFraction(live.rgba) >= MIN_COVERAGE) return { ...live, date: req.date, source: 'live' };
-    reason = 'NASA GIBS has no data for that date yet';
+    if (!opts.allowSparse) reason = 'NASA GIBS has no data for that date yet';
+    else return { ...live, date: req.date, source: 'live' };
   } catch (err) {
     if (signal?.aborted) throw err;
     reason = 'NASA GIBS could not be reached';

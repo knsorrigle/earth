@@ -1,7 +1,7 @@
 import { usePlayerStore, BPM_MAX, BPM_MIN, type AnnounceEvery } from '../state/playerStore';
-import type { PlayerApi } from './usePlayer';
+import type { TimelineControls } from './usePlayer';
 
-export function Transport({ api }: { api: PlayerApi }) {
+export function Transport({ api }: { api: TimelineControls }) {
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const index = usePlayerStore((s) => s.index);
   const last = api.events.length - 1;
@@ -34,7 +34,7 @@ export function Transport({ api }: { api: PlayerApi }) {
   );
 }
 
-export function Settings() {
+export function Settings({ drone = true }: { drone?: boolean }) {
   const bpm = usePlayerStore((s) => s.bpm);
   const setBpm = usePlayerStore((s) => s.setBpm);
   const announceEvery = usePlayerStore((s) => s.announceEvery);
@@ -91,10 +91,12 @@ export function Settings() {
       </label>
 
       <div className="toggles">
-        <label className="switch">
-          <input type="checkbox" checked={droneEnabled} onChange={(e) => setDroneEnabled(e.target.checked)} />
-          <span>Reference hum</span>
-        </label>
+        {drone && (
+          <label className="switch">
+            <input type="checkbox" checked={droneEnabled} onChange={(e) => setDroneEnabled(e.target.checked)} />
+            <span>Reference hum</span>
+          </label>
+        )}
         <label className="switch">
           <input type="checkbox" checked={muted} onChange={(e) => setMuted(e.target.checked)} />
           <span>Mute</span>

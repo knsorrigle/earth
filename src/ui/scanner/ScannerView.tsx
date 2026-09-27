@@ -4,7 +4,10 @@ import type { Dataset } from '../../data/types';
 import { describeScannerMapping } from '../../mapping/legend';
 import { formatLon } from '../../sampling/geo';
 import { SCAN_DURATIONS, usePlayerStore, type ScanDuration, type ScanState } from '../../state/playerStore';
-import { ColorBar } from '../map/ColorBar';
+import { ColorBar, PresenceKey } from '../map/ColorBar';
+import { DatasetPicker } from '../DatasetPicker';
+import { selectMapDataset } from '../map/selectMapDataset';
+import { MAP_DATASETS } from '../../data/registry';
 import { DateBar, shiftDate } from '../map/DateBar';
 import { MapCanvas, type ScanOverlay } from '../map/MapCanvas';
 import { useGibsFrame } from '../map/useGibsFrame';
@@ -57,8 +60,8 @@ export function ScannerView({ dataset }: { dataset: Dataset }) {
           <p className="eyebrow">Scanner · {SCAN_BANDS} latitude bands · west → east</p>
           <h2 id="scanner-title">{dataset.title}</h2>
           <p className="track-desc">
-            A beam sweeps the whole planet. Each band of latitude is a string; you hear the ocean as a chord that changes as
-            the beam crosses currents, coasts and continents.
+            A beam sweeps the whole planet. Each band of latitude is a string; you hear the map as a chord that changes as
+            the beam crosses {frame.presence ? 'fire zones and quiet regions' : 'currents, coasts and continents'}.
           </p>
         </div>
         <div className="readout">
@@ -72,11 +75,20 @@ export function ScannerView({ dataset }: { dataset: Dataset }) {
         </div>
       </section>
 
+      <div className="picker-row">
+        <DatasetPicker
+          label="Map"
+          datasets={MAP_DATASETS}
+          value={dataset.id}
+          onChange={selectMapDataset}
+        />
+      </div>
       <DateBar dataset={dataset} />
 
       <figure className="map-figure">
         <MapCanvas
           bitmap={frame.bitmap}
+          underlay={frame.underlay}
           scan={overlay}
           label={`${dataset.title} scanner. Space starts the sweep; arrow keys step the beam; I describes the line.`}
           describedBy="scan-alt"
@@ -89,7 +101,10 @@ export function ScannerView({ dataset }: { dataset: Dataset }) {
           onActivate={() => void api.ensureAudio()}
           onRelease={api.describeHere}
         />
-        {frame.grid && <ColorBar colormap={frame.grid.colormap} unit="°" ticks={[0, 5, 10, 15, 20, 25, 30]} domain={[-1, 33]} />}
+        {frame.grid && !frame.presence && (
+          <ColorBar colormap={frame.grid.colormap} unit="°" ticks={[0, 5, 10, 15, 20, 25, 30]} domain={[-1, 33]} />
+        )}
+        {frame.presence && <PresenceKey rgb={dataset.frame!.presenceRgb!} label="Fire detection (MODIS, Terra + Aqua)" />}
         <figcaption id="scan-alt" className="chart-alt">
           {frame.description}
         </figcaption>
@@ -163,7 +178,7 @@ export function ScannerView({ dataset }: { dataset: Dataset }) {
             </div>
           </div>
           <ul className="legend-list">
-            {describeScannerMapping(dataset.mapping, SCAN_BANDS).map((l) => (
+            {describeScannerMapping(dataset.mapping, SCAN_BANDS, frame.presence ? 'presence' : 'colormap').map((l) => (
               <li key={l}>{l}</li>
             ))}
           </ul>

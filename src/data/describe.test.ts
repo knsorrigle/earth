@@ -19,6 +19,12 @@ describe('describeSeries', () => {
     expect(text).toContain('Lowest: 4.0 in 2001');
   });
 
+  it('omits percent for anomalies', () => {
+    const text = describeSeries([{ year: 1, value: -0.2 }, { year: 2, value: 1.2 }], 'x', 'u', 1, { percent: false });
+    expect(text).toContain('rose by 1.4.');
+    expect(text).not.toContain('percent');
+  });
+
   it('handles empty series', () => {
     expect(describeSeries([], 'x', 'u', 0)).toBe('No data for x.');
   });

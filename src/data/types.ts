@@ -25,8 +25,20 @@ export interface FrameSpec {
   height: number;
   /** [west, south, east, north] */
   bbox: [number, number, number, number];
-  /** Bundled fallback copy of the colormap XML (under /public). */
-  colormapFallback: string;
+  /**
+   * How pixel colours encode data:
+   * - colormap: invert the GIBS colormap to a value per pixel
+   * - presence: a single marker colour means "detected" (e.g. fire points); no colour means none
+   */
+  encoding: 'colormap' | 'presence';
+  /** Bundled fallback copy of the colormap XML (under /public). colormap encoding only. */
+  colormapFallback?: string;
+  /** Marker colour for presence layers, as rendered by the GIBS WMS style. */
+  presenceRgb?: [number, number, number];
+  /** WMS style to request (presence layers use point styles such as "size5"). */
+  wmsStyle?: string;
+  /** Static basemap drawn beneath sparse layers; also used as a land/water mask. */
+  basemap?: string;
   /** Dates with a bundled fallback frame in /public/frames/<layer>/<date>.png. */
   cachedDates: string[];
   defaultDate: string;

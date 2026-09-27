@@ -4,10 +4,14 @@ import { isInScale } from './pitch';
 import type { ScanColumn, ScanPlan } from '../sampling/scan';
 import { latBands } from '../sampling/scan';
 
-function plan(cells: { mean: number | null; coverage: number }[][], ranges: { min: number; max: number }[]): ScanPlan {
+function plan(
+  cells: { mean: number | null; coverage: number }[][],
+  ranges: { min: number; max: number }[],
+  positive = ranges,
+): ScanPlan {
   const bands = latBands(ranges.length);
   const columns: ScanColumn[] = cells.map((c, i) => ({ index: i, west: 0, east: 5, lon: 2.5, cells: c }));
-  return { bands, columns, bandRanges: ranges };
+  return { bands, columns, bandRanges: ranges, positiveRanges: positive };
 }
 
 describe('bandWindow', () => {
@@ -68,5 +72,28 @@ describe('columnNotes', () => {
   });
   it('step seconds', () => {
     expect(stepSeconds(36, 72)).toBe(0.5);
+  });
+});
+
+describe('columnNotes, logValue (presence layers)', () => {
+  const cfg = { ...DEFAULT_SCANNER, magnitude: 'logValue' as const };
+  const cells = [
+    { mean: 0, coverage: 1 },
+    { mean: 0.0001, coverage: 1 },
+    { mean: 0.05, coverage: 1 },
+  ];
+  const p = plan([cells], cells.map(() => ({ min: 0, max: 0.05 })), [
+    { min: NaN, max: NaN },
+    { min: 0.0001, max: 0.01 },
+    { min: 0.001, max: 0.05 },
+  ]);
+  const notes = columnNotes(p.columns[0], p, cfg);
+  it('zero cells are silent even with full coverage', () => {
+    expect(notes.map((n) => n.band)).toEqual([1, 2]);
+  });
+  it('more fire -> louder, and higher within its band', () => {
+    expect(notes[1].velocity).toBeGreaterThan(notes[0].velocity);
+    expect(notes[1].midi).toBe(bandWindow(2, cfg)[1]); // band max
+    expect(notes[0].midi).toBeLessThanOrEqual(bandWindow(1, cfg)[0] + 2); // band min
   });
 });

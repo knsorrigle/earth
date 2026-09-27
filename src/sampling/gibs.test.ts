@@ -18,6 +18,10 @@ describe('gibs', () => {
     expect(url.searchParams.get('TIME')).toBe('2026-09-01');
     expect(url.searchParams.get('LAYERS')).toBe('GHRSST_L4_MUR25_Sea_Surface_Temperature');
   });
+  it('passes a WMS style when given', () => {
+    const url = new URL(buildWmsGetMapUrl({ layer: 'L', date: '2026-09-01', width: 2, height: 1, bbox: [-180, -90, 180, 90], style: 'size5' }));
+    expect(url.searchParams.get('STYLES')).toBe('size5');
+  });
   it('cached frame path', () => {
     expect(cachedFrameUrl('/', 'L', '2026-09-01')).toBe('/frames/L/2026-09-01.png');
   });

@@ -725,3 +725,132 @@ kbd {
 .panels > * {
   min-width: 0;
 }
+
+/* ── Dataset pickers / presence legend ─────────────── */
+.picker-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin-bottom: 14px;
+}
+.picker {
+  min-width: 220px;
+}
+.presence-key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 14px 16px 4px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.presence-key .swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 0 1px var(--line-strong);
+}
+.presence-key .swatch.land {
+  background: rgb(42, 52, 68);
+  border-radius: 3px;
+  margin-left: 10px;
+}
+.presence-key .swatch.sea {
+  background: rgb(9, 14, 22);
+  border-radius: 3px;
+  margin-left: 10px;
+}
+
+/* ── Duet ─────────────────────────────── */
+:root {
+  --voice-a: #8fd8ff;
+  --voice-b: #f2b766;
+}
+.duet-values {
+  display: flex;
+  justify-content: flex-end;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.duet-values > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.duet-values .num {
+  font-size: 1.5rem;
+}
+.duet-a .num,
+.duet-a .voice-tag {
+  color: var(--voice-a);
+}
+.duet-b .num,
+.duet-b .voice-tag {
+  color: var(--voice-b);
+}
+.voice-tag {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+.chart .line-a,
+.chart .line-b {
+  fill: none;
+  stroke-width: 2.25;
+  stroke-linejoin: round;
+}
+.chart .line-a {
+  stroke: var(--voice-a);
+}
+.chart .line-b {
+  stroke: var(--voice-b);
+  stroke-dasharray: 6 3;
+}
+.chart .line-dim {
+  opacity: 0.3;
+}
+.chart .tick-a {
+  fill: var(--voice-a);
+}
+.chart .tick-b {
+  fill: var(--voice-b);
+}
+.chart .axis-label {
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.chart .dot-a {
+  fill: var(--bg);
+  stroke: var(--voice-a);
+  stroke-width: 3;
+}
+.chart .dot-b {
+  fill: var(--bg);
+  stroke: var(--voice-b);
+  stroke-width: 3;
+}
+.chart .dot-a,
+.chart .dot-b {
+  transition: all 120ms linear;
+}
+@media (max-width: 760px) {
+  .duet-values,
+  .duet-values > div {
+    justify-content: flex-start;
+    align-items: flex-start;
+  }
+}
+.sources,
+.chart-alt,
+.caption {
+  overflow-wrap: anywhere;
+}
+.field,
+.settings > * {
+  min-width: 0;
+}

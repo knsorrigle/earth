@@ -1,31 +1,31 @@
 import * as Tone from 'tone';
-import type { AudioEngine } from './engine';
-import type { NoteEvent } from '../mapping/types';
-
-export interface TimelineCallbacks {
+export interface TimelineCallbacks<E> {
   /** Called on the animation frame closest to when the note is heard. */
-  onStep: (event: NoteEvent) => void;
+  onStep: (event: E) => void;
   /** Called (visually synced) after the last note. */
   onEnd: () => void;
 }
 
+/** Sounds one step at an exact audio time; beat = seconds per step at the current tempo. */
+export type StepSound<E> = (event: E, time: number, beat: number) => void;
+
 /**
- * Plays a list of note events, one per beat, on the Tone transport.
+ * Plays a list of steps, one per beat, on the Tone transport.
  * The cursor can be moved while playing; tempo changes are ramped.
  */
-export class TimelineScheduler {
-  private events: NoteEvent[] = [];
+export class TimelineScheduler<E> {
+  private events: E[] = [];
   private cursor = 0;
   private repeatId: number | null = null;
   /** Set once the last note is scheduled so later ticks in the lookahead window are ignored. */
   private finished = false;
 
   constructor(
-    private engine: AudioEngine,
-    private callbacks: TimelineCallbacks,
+    private sound: StepSound<E>,
+    private callbacks: TimelineCallbacks<E>,
   ) {}
 
-  setEvents(events: NoteEvent[]): void {
+  setEvents(events: E[]): void {
     this.events = events;
     this.cursor = Math.min(this.cursor, Math.max(0, events.length - 1));
   }
@@ -69,7 +69,7 @@ export class TimelineScheduler {
     if (!ev) return;
     const transport = Tone.getTransport();
     const beat = 60 / transport.bpm.value;
-    this.engine.playNote({ freq: ev.freq, velocity: ev.velocity, duration: Math.min(beat * 0.8, 1.2) }, time);
+    this.sound(ev, time, beat);
     Tone.getDraw().schedule(() => this.callbacks.onStep(ev), time);
 
     if (i >= this.events.length - 1) {

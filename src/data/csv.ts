@@ -2,11 +2,16 @@
  * Minimal CSV parser for the simple, unquoted numeric CSVs published by
  * NSIDC / NOAA / NASA. Headers and cells are trimmed (NSIDC pads with spaces).
  */
-export function parseCsv(text: string): Record<string, string>[] {
-  const lines = text
+export function parseCsv(text: string, opts: { headerStartsWith?: string } = {}): Record<string, string>[] {
+  let lines = text
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter((l) => l.length > 0 && !l.startsWith('#'));
+  // Some files (GISTEMP) put a title line above the header.
+  if (opts.headerStartsWith) {
+    const h = lines.findIndex((l) => l.startsWith(opts.headerStartsWith!));
+    lines = h >= 0 ? lines.slice(h) : [];
+  }
   if (lines.length === 0) return [];
   const headers = lines[0].split(',').map((h) => h.trim());
   return lines.slice(1).map((line) => {

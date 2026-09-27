@@ -29,6 +29,18 @@ describe('referenceTone', () => {
   });
 });
 
+describe('fixed baseline reference', () => {
+  it('uses referenceValue and its label', () => {
+    const r = referenceTone(series, { ...cfg, referenceValue: 5, referenceLabel: '1951–1980 average' });
+    expect(r.value).toBe(5);
+    expect(r.phrase).toBe('the 1951–1980 average');
+    expect(Number.isNaN(r.year)).toBe(true);
+    expect(describeMapping({ ...cfg, referenceValue: 0, referenceLabel: '1951–1980 average' }).join(' ')).toContain(
+      'the level of the 1951–1980 average',
+    );
+  });
+});
+
 describe('buildTimeline', () => {
   it('makes one event per point with deviation from reference', () => {
     const events = buildTimeline(series, cfg);

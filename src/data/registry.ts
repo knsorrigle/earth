@@ -2,6 +2,8 @@ import type { Dataset, TimeSeriesPoint } from './types';
 import { parseCsv, toAnnualSeries } from './csv';
 import { describeSeries } from './describe';
 import seaIceCsv from './raw/N_09_extent_v4.0.csv?raw';
+import gistempCsv from './raw/GLB.Ts+dSST.csv?raw';
+import co2Csv from './raw/co2_annmean_mlo.csv?raw';
 
 function rangeOf(series: TimeSeriesPoint[]) {
   return { start: String(series[0].year), end: String(series[series.length - 1].year) };
@@ -71,6 +73,7 @@ export const seaSurfaceTemperature: Dataset = {
     width: 1440,
     height: 720,
     bbox: [-180, -90, 180, 90],
+    encoding: 'colormap',
     colormapFallback: 'colormaps/GHRSST_Sea_Surface_Temperature.xml',
     cachedDates: ['2025-09-01', '2026-03-01', '2026-09-01'],
     defaultDate: '2026-09-01',
@@ -93,7 +96,127 @@ export const seaSurfaceTemperature: Dataset = {
   },
 };
 
-export const DATASETS: Dataset[] = [arcticSeaIce, seaSurfaceTemperature];
+const gistempSeries = toAnnualSeries(parseCsv(gistempCsv, { headerStartsWith: 'Year,' }), 'Year', 'J-D');
+
+export const globalTemperature: Dataset = {
+  id: 'global-temperature',
+  title: 'Global Temperature',
+  unit: '°C',
+  unitSpoken: 'degrees Celsius',
+  decimals: 2,
+  source: {
+    name: 'NASA GISS Surface Temperature Analysis (GISTEMP v4)',
+    url: 'https://data.giss.nasa.gov/gistemp/',
+    dataUrl: 'https://data.giss.nasa.gov/gistemp/tabledata_v4/GLB.Ts+dSST.csv',
+    citation:
+      'GISTEMP Team, 2026: GISS Surface Temperature Analysis (GISTEMP), version 4. NASA Goddard Institute for Space ' +
+      'Studies. Dataset accessed 2026-09-28 at https://data.giss.nasa.gov/gistemp/. Lenssen, N., G.A. Schmidt, ' +
+      'M. Hendrickson, P. Jacobs, M. Menne, and R. Ruedy, 2024: A GISTEMPv4 observational uncertainty ensemble. ' +
+      'J. Geophys. Res. Atmos., 129, no. 17, e2023JD040179, doi:10.1029/2023JD040179.',
+    subset: 'Global land–ocean annual mean (J–D), as the difference from the 1951–1980 average. The current year is left out until it is complete.',
+  },
+  timeSeries: gistempSeries,
+  dateRange: rangeOf(gistempSeries),
+  description:
+    'How much warmer or cooler each year was across the whole planet, land and ocean together, compared with the 1951–1980 average.',
+  altText: describeSeries(gistempSeries, 'global temperature difference from the 1951–1980 average', 'degrees Celsius', 2, { percent: false }),
+  mapping: {
+    domain: [-0.6, 1.4],
+    midiRange: [50, 79],
+    scale: 'minorPentatonic',
+    root: 57,
+    referenceYear: 1951,
+    referenceValue: 0,
+    referenceLabel: '1951–1980 average',
+    higherMeans: 'a warmer year',
+    lowerMeans: 'a cooler year',
+  },
+};
+
+const co2Series = toAnnualSeries(parseCsv(co2Csv), 'year', 'mean');
+
+export const carbonDioxide: Dataset = {
+  id: 'co2-mauna-loa',
+  title: 'Carbon Dioxide (CO₂)',
+  unit: 'ppm',
+  unitSpoken: 'parts per million',
+  decimals: 1,
+  source: {
+    name: 'NOAA Global Monitoring Laboratory — Mauna Loa CO₂ annual mean',
+    url: 'https://gml.noaa.gov/ccgg/trends/',
+    dataUrl: 'https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_annmean_mlo.csv',
+    citation:
+      'Dr. Xin Lan, NOAA/GML (gml.noaa.gov/ccgg/trends/) and Dr. Ralph Keeling, Scripps Institution of Oceanography (scrippsco2.ucsd.edu/).',
+    subset:
+      'Annual mean at Mauna Loa Observatory, Hawaii. December 2022 to July 2023 were measured at nearby Maunakea after the Mauna Loa eruption.',
+  },
+  timeSeries: co2Series,
+  dateRange: rangeOf(co2Series),
+  description:
+    'Carbon dioxide in the air, measured on a Hawaiian volcano since 1958: the longest direct record of the gas that drives global warming.',
+  altText: describeSeries(co2Series, 'carbon dioxide at Mauna Loa, yearly average', 'parts per million', 1),
+  mapping: {
+    domain: [310, 430],
+    midiRange: [50, 79],
+    scale: 'minorPentatonic',
+    root: 57,
+    referenceYear: 1959,
+    higherMeans: 'more carbon dioxide',
+    lowerMeans: 'less carbon dioxide',
+  },
+};
+
+export const activeFires: Dataset = {
+  id: 'active-fires',
+  title: 'Active Fires',
+  unit: '% of area',
+  unitSpoken: 'percent of the area',
+  decimals: 2,
+  source: {
+    name: 'MODIS Thermal Anomalies / Fire locations (Terra + Aqua, FIRMS NRT), via NASA GIBS',
+    url: 'https://firms.modaps.eosdis.nasa.gov/',
+    dataUrl: 'https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi',
+    citation:
+      'LANCE MODIS (2021). MODIS/Aqua Terra Thermal Anomalies/Fire locations 1km FIRMS NRT (Vector data), version 6.1NRT. ' +
+      'NASA/GSFC. https://doi.org/10.5067/FIRMS/MODIS/MCD14DL.NRT.0061. Imagery from NASA GIBS, layer ' +
+      'MODIS_Combined_Thermal_Anomalies_All; land/water basemap: GIBS OSM_Land_Water_Map (© OpenStreetMap contributors).',
+    subset:
+      'Daily fire detections drawn by GIBS as points. The app measures how much of each area is covered by detection points — a relative index of fire activity, not a count of fires.',
+  },
+  // Verified in the GIBS EPSG:4326 capabilities (2026-09-28): WMS styles size5/size10, daily, 2000-11-01 to present.
+  gibsLayerId: 'MODIS_Combined_Thermal_Anomalies_All',
+  frame: {
+    width: 1440,
+    height: 720,
+    bbox: [-180, -90, 180, 90],
+    encoding: 'presence',
+    presenceRgb: [236, 98, 16],
+    wmsStyle: 'size5',
+    basemap: 'basemaps/OSM_Land_Water_Map.png',
+    cachedDates: ['2025-09-01', '2026-03-01', '2026-09-01'],
+    defaultDate: '2026-09-01',
+  },
+  dateRange: { start: '2000-11-01', end: recentDate(1) },
+  description:
+    'Places where satellites saw unusually hot spots that day — mostly wildfires and farm burning. More crackle means more fire nearby.',
+  altText: 'World map of fire detections shown as orange points on dark land.',
+  mapping: {
+    // Fire activity is sonified on a log scale of marked-area fraction: 0.1% .. 50%.
+    // (GIBS draws each detection as a ~5 px dot, so busy regions reach tens of percent.)
+    domain: [-3, -0.3],
+    midiRange: [55, 86],
+    scale: 'majorPentatonic',
+    root: 60,
+    referenceYear: 0,
+    higherMeans: 'more fire',
+    lowerMeans: 'less fire',
+  },
+};
+
+export const DATASETS: Dataset[] = [arcticSeaIce, globalTemperature, carbonDioxide, seaSurfaceTemperature, activeFires];
+
+export const TIMELINE_DATASETS = DATASETS.filter((d) => d.timeSeries);
+export const MAP_DATASETS = DATASETS.filter((d) => d.frame);
 
 export function getDataset(id: string): Dataset {
   const d = DATASETS.find((x) => x.id === id);

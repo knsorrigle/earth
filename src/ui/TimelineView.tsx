@@ -6,11 +6,14 @@ import { TimelineChart } from './TimelineChart';
 import { Readout } from './Readout';
 import { Settings, Transport } from './Transport';
 import { KeyboardHelp, Legend } from './Legend';
+import { DatasetPicker } from './DatasetPicker';
+import { getDataset, TIMELINE_DATASETS } from '../data/registry';
 
 export function TimelineView({ dataset }: { dataset: Dataset }) {
   const api = usePlayer(dataset);
   useKeyboardShortcuts(api);
-  const index = usePlayerStore((s) => s.index);
+  // The year index is shared with Duet, which can have more years: clamp on the way in.
+  const index = Math.min(usePlayerStore((s) => s.index), api.events.length - 1);
   const event = api.events[index];
 
   return (
@@ -25,6 +28,20 @@ export function TimelineView({ dataset }: { dataset: Dataset }) {
         </div>
         <Readout dataset={dataset} event={event} reference={api.reference} />
       </section>
+
+      <div className="picker-row">
+        <DatasetPicker
+          label="Record"
+          datasets={TIMELINE_DATASETS}
+          value={dataset.id}
+          onChange={(id) => {
+            const s = usePlayerStore.getState();
+            s.setDatasetId(id);
+            const d = getDataset(id);
+            s.announce(`${d.title}, ${d.dateRange.start} to ${d.dateRange.end}. Press space to play, L for what the sounds mean.`);
+          }}
+        />
+      </div>
 
       <TimelineChart
         dataset={dataset}

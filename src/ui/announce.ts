@@ -10,11 +10,11 @@ export function pointAnnouncement(ev: Pick<NoteEvent, 'year' | 'value'>, u: Anno
   return `Year ${ev.year}, ${ev.value.toFixed(u.decimals)} ${u.unitSpoken}`;
 }
 
-/** "3.48 below 1979" / "0.62 above 1979" / "same as 1979" */
+/** "3.48 below 1979" / "0.62 above the 1951–1980 average" / "same as 1979" */
 export function relationToReference(ev: Pick<NoteEvent, 'deviation'>, ref: ReferenceTone, decimals: number): string {
   const d = Number(ev.deviation.toFixed(decimals));
-  if (d === 0) return `same as ${ref.year}`;
-  return `${Math.abs(d).toFixed(decimals)} ${d < 0 ? 'below' : 'above'} ${ref.year}`;
+  if (d === 0) return `same as ${ref.phrase}`;
+  return `${Math.abs(d).toFixed(decimals)} ${d < 0 ? 'below' : 'above'} ${ref.phrase}`;
 }
 
 /** Longer form used when paused or stepping: includes relation to the reference. */

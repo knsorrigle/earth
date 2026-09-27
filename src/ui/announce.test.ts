@@ -3,7 +3,7 @@ import { detailedAnnouncement, pointAnnouncement, relationToReference, shouldAnn
 import type { NoteEvent, ReferenceTone } from '../mapping/types';
 
 const u = { unitSpoken: 'million square kilometres', decimals: 2 };
-const ref: ReferenceTone = { year: 1979, value: 7.05, midi: 74, freq: 587, noteName: 'D5' };
+const ref: ReferenceTone = { year: 1979, phrase: '1979', label: '1979', value: 7.05, midi: 74, freq: 587, noteName: 'D5' };
 const ev: NoteEvent = { index: 33, year: 2012, value: 3.57, midi: 52, freq: 164, noteName: 'E3', velocity: 0.6, deviation: 3.57 - 7.05 };
 
 describe('announcements', () => {
@@ -30,5 +30,12 @@ describe('shouldAnnounce', () => {
     expect(shouldAnnounce({ index: 2, year: 1981 }, 5, 47)).toBe(false);
     expect(shouldAnnounce({ index: 2, year: 1981 }, 1, 47)).toBe(true);
     expect(shouldAnnounce({ index: 2, year: 1990 }, 0, 47)).toBe(false);
+  });
+});
+
+describe('baseline references', () => {
+  it('uses the baseline phrase', () => {
+    const base: ReferenceTone = { year: NaN, phrase: 'the 1951–1980 average', label: '1951–1980 average', value: 0, midi: 60, freq: 261, noteName: 'C4' };
+    expect(relationToReference({ deviation: 1.29 }, base, 2)).toBe('1.29 above the 1951–1980 average');
   });
 });

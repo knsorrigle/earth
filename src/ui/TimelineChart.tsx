@@ -124,7 +124,7 @@ export function TimelineChart({ dataset, events, reference, index, onSeek, onScr
 
           <line className="ref-line" x1={M.left} x2={geo.w - M.right} y1={refY} y2={refY} />
           <text className="ref-label" x={geo.w - M.right} y={refY - 6} textAnchor="end">
-            {reference.year} level · the hum
+            {reference.label} · the hum
           </text>
 
           <path className="line-future" d={geo.path} />

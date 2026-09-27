@@ -69,3 +69,12 @@ describe('describeColumn', () => {
     expect(describeColumn(p, 1, 'degrees Celsius', 1)).toContain('5.0 degrees Celsius, 50 percent ocean');
   });
 });
+
+describe('describeColumn (presence)', () => {
+  it('speaks fire share per band', () => {
+    const p = planScan(grid(), 4, 2);
+    p.columns[1].cells[0] = { mean: 0.0042, coverage: 1 };
+    p.columns[1].cells[1] = { mean: 0, coverage: 1 };
+    expect(describeColumn(p, 1, '', 2, true)).toBe('At 45 degrees west. 90° N to 0°: fire on 0.42 percent of the area. 0° to 90° S: no fires.');
+  });
+});

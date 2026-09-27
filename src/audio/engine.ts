@@ -1,6 +1,6 @@
 import * as Tone from 'tone';
 
-export type ChannelId = 'melody' | 'drone' | 'explore' | 'scanner';
+export type ChannelId = 'melody' | 'drone' | 'explore' | 'scanner' | 'duet';
 
 export interface NoteSpec {
   freq: number;
@@ -13,11 +13,13 @@ export interface NoteSpec {
 /**
  * Tone.js audio graph. Knows nothing about datasets or UI.
  *
- *   melody PolySynth -> lowpass -> Channel(melody) ─┐
+ *   melody PolySynth -> lowpass -> Panner -> Channel(melody) ─┐
+ *   duet PolySynth(FM) -> lowpass -> Panner -> Channel(duet) ─┤
  *   drone oscillators -> lowpass -> Gain -> Channel(drone) ─┤
  *   explore Synth -> lowpass -> Panner ─┐                   │
  *   land pink noise -> lowpass -> Gain -> Panner ─> Channel(explore) ─┤
  *   scanner PolySynth -> lowpass -> Panner -> Channel(scanner) ─┤
+ *   crackle NoiseSynth -> bandpass -> Panner -> Channel(explore) ─┤
  *                                   Reverb -> master Gain -> Limiter -> SoftClip -> Destination
  *
  * Normal playback peaks around -15 dBFS. The limiter tames dense passages, and
@@ -45,6 +47,10 @@ export class AudioEngine {
   private channels!: Record<ChannelId, Tone.Channel>;
   private melody!: Tone.PolySynth<Tone.Synth>;
   private melodyFilter!: Tone.Filter;
+  private melodyPanner!: Tone.Panner;
+  private duetSynth!: Tone.PolySynth<Tone.FMSynth>;
+  private duetFilter!: Tone.Filter;
+  private duetPanner!: Tone.Panner;
   private droneLow!: Tone.OmniOscillator<Tone.FatOscillator>;
   private droneHigh!: Tone.Oscillator;
   private droneFilter!: Tone.Filter;
@@ -61,6 +67,11 @@ export class AudioEngine {
   private scanSynth!: Tone.PolySynth<Tone.Synth>;
   private scanFilter!: Tone.Filter;
   private scanPanner!: Tone.Panner;
+  private crackle!: Tone.NoiseSynth;
+  private crackleFilter!: Tone.Filter;
+  private cracklePanner!: Tone.Panner;
+  private crackleRate = 0;
+  private crackleTimer: ReturnType<typeof setTimeout> | undefined;
 
   /** True only once the whole graph exists (build() is async: reverb IR generation). */
   private built = false;
@@ -97,12 +108,26 @@ export class AudioEngine {
       drone: new Tone.Channel({ volume: -14 }).connect(this.reverb),
       explore: new Tone.Channel({ volume: 0 }).connect(this.reverb),
       scanner: new Tone.Channel({ volume: 3 }).connect(this.reverb),
+      duet: new Tone.Channel({ volume: 4 }).connect(this.reverb),
     };
 
     // Melody: soft mallet-like triangle, rounded off by a gentle lowpass.
-    this.melodyFilter = new Tone.Filter({ type: 'lowpass', frequency: 2400, rolloff: -12, Q: 0.4 }).connect(
-      this.channels.melody,
-    );
+    this.melodyPanner = new Tone.Panner(0).connect(this.channels.melody);
+    this.melodyFilter = new Tone.Filter({ type: 'lowpass', frequency: 2400, rolloff: -12, Q: 0.4 }).connect(this.melodyPanner);
+
+    // Duet second voice: a warm FM bell, deliberately unlike the triangle mallet.
+    this.duetPanner = new Tone.Panner(0.45).connect(this.channels.duet);
+    this.duetFilter = new Tone.Filter({ type: 'lowpass', frequency: 1900, rolloff: -12, Q: 0.3 }).connect(this.duetPanner);
+    this.duetSynth = new Tone.PolySynth(Tone.FMSynth, {
+      harmonicity: 2,
+      modulationIndex: 1.4,
+      oscillator: { type: 'sine' },
+      modulation: { type: 'triangle' },
+      envelope: { attack: 0.03, decay: 0.7, sustain: 0.25, release: 1.5 },
+      modulationEnvelope: { attack: 0.02, decay: 0.4, sustain: 0.2, release: 1 },
+      volume: 0,
+    }).connect(this.duetFilter);
+    this.duetSynth.maxPolyphony = 10;
     this.melody = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: 'triangle' },
       envelope: { attack: 0.012, decay: 0.4, sustain: 0.22, release: 1.6 },
@@ -144,6 +169,15 @@ export class AudioEngine {
       volume: -2,
     }).connect(this.scanFilter);
     this.scanSynth.maxPolyphony = 24;
+
+    // Fire crackle: very short band-passed noise bursts at random intervals.
+    this.cracklePanner = new Tone.Panner(0).connect(this.channels.explore);
+    this.crackleFilter = new Tone.Filter({ type: 'bandpass', frequency: 2200, Q: 1.2 }).connect(this.cracklePanner);
+    this.crackle = new Tone.NoiseSynth({
+      noise: { type: 'white' },
+      envelope: { attack: 0.001, decay: 0.018, sustain: 0, release: 0.01 },
+      volume: -8,
+    }).connect(this.crackleFilter);
     this.built = true;
   }
 
@@ -163,6 +197,28 @@ export class AudioEngine {
     if (!this.ready) return;
     this.scanSynth.releaseAll();
   }
+
+  /**
+   * Fire crackle. rate = bursts per second (0 stops), brightness 0..1 moves
+   * the band-pass up. Bursts are Poisson-timed so it sounds like fire, not a metronome.
+   */
+  setCrackle(rate: number, brightness: number, pan: number): void {
+    if (!this.ready) return;
+    const now = Tone.now();
+    this.cracklePanner.pan.rampTo(pan, 0.08, now);
+    this.crackleFilter.frequency.rampTo(1400 + 3200 * Math.min(1, Math.max(0, brightness)), 0.1, now);
+    const wasRunning = this.crackleRate > 0;
+    this.crackleRate = Math.max(0, rate);
+    if (this.crackleRate > 0 && !wasRunning) this.crackleTick();
+  }
+
+  private crackleTick = (): void => {
+    clearTimeout(this.crackleTimer);
+    if (this.crackleRate <= 0 || !this.ready) return;
+    this.crackle.triggerAttackRelease(0.004 + Math.random() * 0.02, Tone.now() + 0.01, 0.35 + Math.random() * 0.65);
+    const wait = -Math.log(1 - Math.random()) / this.crackleRate;
+    this.crackleTimer = setTimeout(this.crackleTick, Math.min(1500, wait * 1000));
+  };
 
   /** Sound the value under the explore cursor. Glides if already sounding. */
   exploreTone(freq: number, pan: number, velocity = 0.6): void {
@@ -190,9 +246,22 @@ export class AudioEngine {
     this.landGain.gain.rampTo(1, 0.08, now);
   }
 
+  /** Silence the explore tone and land wash but leave the fire crackle running. */
+  exploreQuiet(): void {
+    if (!this.ready) return;
+    const now = Tone.now();
+    if (this.exploreSounding) {
+      this.exploreSynth.triggerRelease(now);
+      this.exploreSounding = false;
+    }
+    this.landGain.gain.rampTo(0, 0.15, now);
+  }
+
   /** Fade explore sound out (cursor left the map or stopped moving). */
   exploreStop(fadeSeconds = 0.6): void {
     if (!this.ready) return;
+    this.crackleRate = 0;
+    clearTimeout(this.crackleTimer);
     const now = Tone.now();
     if (this.exploreSounding) {
       this.exploreSynth.triggerRelease(now);
@@ -205,6 +274,18 @@ export class AudioEngine {
     if (!this.ready) return;
     const v = Math.min(1, Math.max(0, note.velocity));
     this.melody.triggerAttackRelease(note.freq, note.duration, time ?? Tone.now(), v);
+  }
+
+  /** Second duet voice (FM bell). */
+  playDuetNote(note: NoteSpec, time?: number): void {
+    if (!this.ready) return;
+    this.duetSynth.triggerAttackRelease(note.freq, note.duration, time ?? Tone.now(), Math.min(1, Math.max(0, note.velocity)));
+  }
+
+  /** Stereo position of the main melody voice (centre for Timeline, left in Duet). */
+  setMelodyPan(pan: number): void {
+    if (!this.ready) return;
+    this.melodyPanner.pan.rampTo(pan, 0.2);
   }
 
   /**
@@ -249,14 +330,15 @@ export class AudioEngine {
   releaseAll(): void {
     if (!this.ready) return;
     this.melody.releaseAll();
+    this.duetSynth.releaseAll();
   }
 
   dispose(): void {
     if (!this.ready) return;
     [this.droneLow, this.droneHigh, this.droneFilter, this.droneGain, this.melody, this.melodyFilter,
-      this.exploreSynth, this.exploreFilter, this.explorePanner, this.landNoise, this.landFilter, this.landGain,
-      this.landPanner, this.scanSynth, this.scanFilter, this.scanPanner, this.channels.melody, this.channels.drone,
-      this.channels.explore, this.channels.scanner, this.reverb, this.master, this.limiter, this.clipPreGain, this.clipper].forEach((n) => n.dispose());
+      this.melodyPanner, this.duetSynth, this.duetFilter, this.duetPanner, this.exploreSynth, this.exploreFilter, this.explorePanner, this.landNoise, this.landFilter, this.landGain,
+      this.landPanner, this.scanSynth, this.scanFilter, this.scanPanner, this.crackle, this.crackleFilter, this.cracklePanner, this.channels.melody, this.channels.drone,
+      this.channels.explore, this.channels.scanner, this.channels.duet, this.reverb, this.master, this.limiter, this.clipPreGain, this.clipper].forEach((n) => n.dispose());
     this.built = false;
     this.initPromise = null;
   }

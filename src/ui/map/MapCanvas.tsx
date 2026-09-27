@@ -18,6 +18,8 @@ export interface ScanOverlay {
 
 interface Props {
   bitmap: ImageBitmap | null;
+  /** Drawn beneath the frame (basemap for sparse layers). */
+  underlay?: ImageBitmap | null;
   label: string;
   describedBy: string;
   busy: boolean;
@@ -37,7 +39,7 @@ const GRATICULE_STEP = 30;
  * image or size changes) and an overlay (cursor or scanner beam).
  * Exposed as role="application" so screen readers pass arrow keys through.
  */
-export function MapCanvas({ bitmap, label, describedBy, busy, cursor, scan, onMove, onActivate, onLeave, onRelease }: Props) {
+export function MapCanvas({ bitmap, underlay, label, describedBy, busy, cursor, scan, onMove, onActivate, onLeave, onRelease }: Props) {
   const [wrapRef, width] = useElementWidth<HTMLDivElement>(960);
   const baseRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -55,6 +57,10 @@ export function MapCanvas({ bitmap, label, describedBy, busy, cursor, scan, onMo
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = '#161d29';
     ctx.fillRect(0, 0, width, height);
+    if (underlay) {
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(underlay, 0, 0, width, height);
+    }
     if (bitmap) {
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
@@ -77,7 +83,7 @@ export function MapCanvas({ bitmap, label, describedBy, busy, cursor, scan, onMo
       ctx.lineTo(width, y + 0.5);
       ctx.stroke();
     }
-  }, [bitmap, width, height, dpr]);
+  }, [bitmap, underlay, width, height, dpr]);
 
   // Overlay: cursor or scanner beam. The beam animates via rAF while playing.
   useEffect(() => {

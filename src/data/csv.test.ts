@@ -31,3 +31,23 @@ describe('toAnnualSeries', () => {
     ]);
   });
 });
+
+describe('real bundled files', () => {
+  it('GISTEMP: skips the title line and drops *** (incomplete year)', () => {
+    const text = `Land-Ocean: Global Means
+Year,Jan,Feb,J-D,D-N
+1880,-.19,-.26,-.18,***
+2026,1.09,1.25,***,***
+`;
+    const s = toAnnualSeries(parseCsv(text, { headerStartsWith: 'Year,' }), 'Year', 'J-D');
+    expect(s).toEqual([{ year: 1880, value: -0.18 }]);
+  });
+  it('NOAA CO2: ignores # comment lines', () => {
+    const text = `# comment
+# more
+year,mean,unc
+1959,315.98,0.12
+`;
+    expect(toAnnualSeries(parseCsv(text), 'year', 'mean')).toEqual([{ year: 1959, value: 315.98 }]);
+  });
+});
