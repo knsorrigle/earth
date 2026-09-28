@@ -67,6 +67,16 @@ at whatever azimuth the viewer has orbited to; idle auto-rotation pauses while f
 it off. In Scanner a glowing meridian arc marks the beam and the globe shader brightens a ~9° band under it
 (`uBeamLon`, `uBeam`). No automatic turning under reduced motion. The yaw maths is unit-tested against three.js.
 
+## Jukebox orbit (Phase 6, step 6)
+
+Every dataset is a record orbiting the globe: a camera-facing vinyl disc (grooves, a sheen, a label painted with the
+dataset's own colour scale) plus a real `<button>` (drei `Html`, portalled into an overlay outside the canvas so screen
+readers can reach it). The orbit only turns while music plays — speed follows the live spectrum level — and the loaded
+record spins; in silence everything holds still. Tab / ←→ / Home / End move between records and swing the focused one to
+the front; labels of records behind the globe are hidden but stay in the Tab order. Choosing a record plays a needle drop
+(thump + filtered crackle), flies the disc to the centre, then opens its track: time series start in Timeline, maps start a
+Scanner sweep (the globe crossfades to the new map). Reduced motion: no orbiting or flight; the choice is instant.
+
 ## Modes
 
 - **Timeline:** one note per year; pitch = value; a hum tuned to the reference year.

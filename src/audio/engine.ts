@@ -312,6 +312,38 @@ export class AudioEngine {
     });
   }
 
+  /**
+   * "Needle drop" when a record is chosen: a soft low thump and a short
+   * burst of filtered vinyl crackle. Built on demand and disposed after.
+   */
+  playNeedleDrop(): void {
+    if (!this.ready) return;
+    const t = Tone.now() + 0.02;
+    const out = new Tone.Gain(0.9).connect(this.master);
+    const thump = new Tone.MembraneSynth({
+      pitchDecay: 0.04,
+      octaves: 3,
+      envelope: { attack: 0.002, decay: 0.28, sustain: 0, release: 0.1 },
+      volume: -14,
+    }).connect(out);
+    const hissFilter = new Tone.Filter({ type: 'bandpass', frequency: 2600, Q: 0.7 }).connect(out);
+    const hiss = new Tone.NoiseSynth({
+      noise: { type: 'pink' },
+      envelope: { attack: 0.005, decay: 0.45, sustain: 0, release: 0.1 },
+      volume: -24,
+    }).connect(hissFilter);
+    thump.triggerAttackRelease(55, 0.2, t);
+    hiss.triggerAttackRelease(0.4, t + 0.03);
+    // A few crackles on top.
+    const crackle = new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.001, decay: 0.012, sustain: 0 }, volume: -22 }).connect(
+      hissFilter,
+    );
+    // One noise voice: its start times must increase, so sort the random crackle times.
+    const times = Array.from({ length: 5 }, () => t + 0.05 + Math.random() * 0.4).sort((a, b) => a - b);
+    times.forEach((ct, i) => crackle.triggerAttackRelease(0.008, ct + i * 0.001, 0.4 + Math.random() * 0.6));
+    window.setTimeout(() => [thump, hiss, crackle, hissFilter, out].forEach((n) => n.dispose()), 1500);
+  }
+
   /** Second duet voice (FM bell). */
   playDuetNote(note: NoteSpec, time?: number): void {
     if (!this.ready) return;

@@ -160,3 +160,56 @@ export const spectrumFragment = /* glsl */ `
     #include <colorspace_fragment>
   }
 `;
+
+/**
+ * Jukebox record: a vinyl disc facing the viewer. Grooves, a sheen that turns
+ * with uSpin (only while its music plays), a centre label painted with the
+ * dataset's own colour scale (uStops), and a glow rim when active / focused.
+ */
+export const recordVertex = /* glsl */ `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+export const recordFragment = /* glsl */ `
+  uniform vec3 uColors[4];
+  uniform float uPos[4];
+  uniform float uSpin;
+  uniform float uGlow;
+  uniform float uAlpha;
+  uniform vec3 uGlowColor;
+  varying vec2 vUv;
+
+  vec3 palette(float t) {
+    vec3 c = uColors[0];
+    for (int i = 1; i < 4; i++) {
+      float a = uPos[i - 1];
+      float b = uPos[i];
+      if (b > a) c = mix(c, uColors[i], clamp((t - a) / (b - a), 0.0, 1.0));
+    }
+    return c;
+  }
+
+  void main() {
+    vec2 p = vUv * 2.0 - 1.0;
+    float r = length(p);
+    if (r > 1.0) discard;
+    float ang = atan(p.y, p.x) - uSpin;
+    // Vinyl with fine grooves and a sheen that sweeps round as it spins.
+    vec3 col = vec3(0.035, 0.045, 0.06) + 0.035 * (0.5 + 0.5 * sin(r * 95.0));
+    col += vec3(0.16) * pow(abs(cos(ang)), 18.0) * smoothstep(0.45, 0.6, r) * (1.0 - smoothstep(0.9, 0.97, r));
+    // Label: the dataset's colour scale, low (bottom) to high (top), turning with the record.
+    vec2 q = vec2(cos(-uSpin) * p.x - sin(-uSpin) * p.y, sin(-uSpin) * p.x + cos(-uSpin) * p.y);
+    float label = 1.0 - smoothstep(0.43, 0.45, r);
+    col = mix(col, palette(clamp(q.y / 0.88 + 0.5, 0.0, 1.0)), label);
+    col = mix(col, vec3(0.02), 1.0 - smoothstep(0.05, 0.065, r)); // spindle hole
+    // Rim glow.
+    float rim = smoothstep(0.86, 0.97, r) * (1.0 - smoothstep(0.97, 1.0, r));
+    col += uGlowColor * rim * (0.25 + 1.4 * uGlow);
+    gl_FragColor = vec4(col, uAlpha);
+    #include <colorspace_fragment>
+  }
+`;

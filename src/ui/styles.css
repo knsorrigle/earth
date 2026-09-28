@@ -1254,3 +1254,44 @@ kbd {
     bottom: auto;
   }
 }
+
+/* ── Jukebox record shelf ─────────────────────────────── */
+.record-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.record-overlay > div {
+  pointer-events: none;
+}
+.record-btn {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  min-height: 26px;
+  border-radius: 999px;
+  border: 1px solid rgba(143, 216, 255, 0.35);
+  background: rgba(5, 7, 11, 0.8);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+.record-btn:hover,
+.record-btn:focus-visible {
+  border-color: var(--ice);
+  opacity: 1 !important;
+}
+.record-btn.active {
+  border-color: var(--ice);
+  color: var(--ice);
+}
+.record-btn:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}

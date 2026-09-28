@@ -47,6 +47,8 @@ export interface PlayerState {
   /** Shared by the map modes (Explore, Scanner): dataset, date and frame status. */
   explore: ExploreState;
   scan: ScanState;
+  /** A record was chosen on the jukebox: the mode it opens should start playing once ready. */
+  autoplay: 'timeline' | 'scanner' | null;
   /** What the globe HUD shows; published by the active mode. */
   hud: HudState | null;
   hudLegend: boolean;
@@ -74,6 +76,7 @@ export interface PlayerState {
   setDuet: (patch: Partial<{ a: string; b: string }>) => void;
   setEar: (patch: Partial<{ difficulty: EarDifficulty; set: EarSet }>) => void;
   setHud: (hud: HudState | null) => void;
+  setAutoplay: (a: 'timeline' | 'scanner' | null) => void;
   setHudLegend: (open: boolean) => void;
   /** Load a different time series in Timeline mode (resets to its first year). */
   setDatasetId: (id: string) => void;
@@ -108,6 +111,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   ear: { difficulty: 'easy', set: 'mixed' },
   hud: null,
   hudLegend: true,
+  autoplay: null,
   datasetId: 'arctic-sea-ice-september',
   index: 0,
   isPlaying: false,
@@ -124,6 +128,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   setExplore: (patch) => set((s) => ({ explore: { ...s.explore, ...patch } })),
   setScan: (patch) => set((s) => ({ scan: { ...s.scan, ...patch } })),
   setHud: (hud) => set({ hud }),
+  setAutoplay: (autoplay) => set({ autoplay }),
   setHudLegend: (hudLegend) => set({ hudLegend }),
   setEar: (patch) => set((s) => ({ ear: { ...s.ear, ...patch } })),
   setDuet: (patch) => set((s) => ({ duet: { ...s.duet, ...patch }, index: 0, isPlaying: false })),

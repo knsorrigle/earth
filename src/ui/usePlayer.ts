@@ -146,6 +146,18 @@ export function usePlayer(dataset: Dataset) {
     else void play();
   }, [play, pause]);
 
+  // A record dropped on the jukebox: start from the first year.
+  const autoplay = usePlayerStore((s) => s.autoplay);
+  useEffect(() => {
+    if (autoplay !== 'timeline') return;
+    const s = usePlayerStore.getState();
+    s.setAutoplay(null);
+    scheduler.pause();
+    s.setPlaying(false);
+    s.setIndex(0);
+    void play();
+  }, [autoplay, play, scheduler]);
+
   /**
    * Move to a point. While playing, playback continues from there.
    * While paused, the note is auditioned against a briefly swelling drone.

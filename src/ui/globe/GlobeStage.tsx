@@ -6,6 +6,7 @@ import { useReducedMotion } from 'framer-motion';
 import { AdditiveBlending, BackSide, Color, DataTexture, type Group, ShaderMaterial, SRGBColorSpace, type Texture } from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { FollowController, ScanBeam } from './FollowAndBeam';
+import { RecordShelf } from './RecordShelf';
 import { getDataset } from '../../data/registry';
 import { rotationToFaceLon } from '../../globe/geo';
 import { atmosphereFragment, atmosphereVertex, globeFragment, globeVertex } from '../../globe/shaders';
@@ -187,6 +188,7 @@ export default function GlobeStage() {
   const beamRef = useRef<Group>(null);
   const globeMaterial = useRef<ShaderMaterial | null>(null);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
+  const recordOverlay = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (reduced) setRotating(false);
@@ -198,7 +200,9 @@ export default function GlobeStage() {
 
   return (
     <section className="stage" aria-label="Globe">
-      <div className="stage-canvas" role="img" aria-label={label}>
+      {/* The label lives on its own element: a role="img" wrapper would hide the record buttons from screen readers. */}
+      <p className="sr-only">{label}</p>
+      <div className="stage-canvas" aria-hidden="true">
         <GlobeBoundary onError={() => setAvailable(false)}>
           <Canvas
             flat
@@ -225,6 +229,7 @@ export default function GlobeStage() {
               <Globe bitmap={frame.bitmap} underlay={frame.underlay} reduced={reduced} materialRef={globeMaterial} />
               <ScanBeam beamRef={beamRef} />
             </group>
+            <RecordShelf overlay={recordOverlay} reduced={reduced} />
             <FollowController
               worldRef={worldRef}
               beamRef={beamRef}
@@ -258,6 +263,7 @@ export default function GlobeStage() {
           </Canvas>
         </GlobeBoundary>
       </div>
+      <div ref={recordOverlay} className="record-overlay" role="group" aria-label="Record shelf: choose a dataset to play" />
       <Hud
         controls={
           <>

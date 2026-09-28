@@ -155,6 +155,17 @@ export function useScanner(dataset: Dataset, frame: GibsFrame) {
     else void play();
   }, [play, pause]);
 
+  // A map record dropped on the jukebox: sweep from the west edge once the frame is ready.
+  const autoplay = usePlayerStore((s) => s.autoplay);
+  useEffect(() => {
+    if (autoplay !== 'scanner' || !plan) return;
+    const s = usePlayerStore.getState();
+    s.setAutoplay(null);
+    scheduler.pause();
+    s.setScan({ column: 0, isScanning: false });
+    void play();
+  }, [autoplay, plan, play, scheduler]);
+
   /** Move the beam. While paused, the column is strummed and announced. */
   const seek = useCallback(
     async (column: number, opts: { announce?: boolean } = {}) => {
