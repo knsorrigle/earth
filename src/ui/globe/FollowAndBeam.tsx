@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { AdditiveBlending, CatmullRomCurve3, type Group, MeshBasicMaterial, type ShaderMaterial, TubeGeometry, Vector3 } from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
-import { dampAngle, getGlobeFocus, meridianRotation, yawToFace } from '../../globe/focus';
+import { DEFAULT_ELEVATION, dampAngle, easeElevation, getGlobeFocus, meridianRotation, yawToFace } from '../../globe/focus';
 import { latLonToXYZ } from '../../globe/geo';
 
 /** Seconds-based easing constants: how quickly the globe turns and the beam fades. */
@@ -29,7 +29,7 @@ export function FollowController({
   rotating: boolean;
 }) {
   const { invalidate } = useThree();
-  const state = useMemo(() => ({ strength: 0, lon: 0 }), []);
+  const state = useMemo(() => ({ strength: 0, lon: 0, lifted: false }), []);
 
   // With the globe paused the canvas draws on demand: wake it while a mode offers a focus.
   useEffect(() => {
@@ -41,19 +41,39 @@ export function FollowController({
 
   useFrame(({ camera }, dt) => {
     const f = getGlobeFocus();
-    const following = follow && !!f;
+    const following = follow && f?.lon !== undefined;
     // Idle auto-rotation fights following; it only runs when nothing is being followed.
     if (controlsRef.current) controlsRef.current.autoRotate = rotating && !following;
 
     const world = worldRef.current;
-    if (world && f && following) {
+    if (world && f?.lon !== undefined && following) {
       const azimuth = Math.atan2(camera.position.x, camera.position.z);
       world.rotation.y = dampAngle(world.rotation.y, yawToFace(f.lon, azimuth), 1 - Math.exp(-dt * TURN_RATE));
     }
 
+    // Elevation requests (e.g. look down on the Arctic); ease back to the default once released.
+    if (follow) {
+      const wanted = f?.elevation;
+      const target = wanted ?? (state.lifted ? DEFAULT_ELEVATION : null);
+      if (target !== null) {
+        const p = camera.position;
+        const current = (Math.asin(p.y / p.length()) * 180) / Math.PI;
+        if (Math.abs(current - target) > 0.2) {
+          const next = easeElevation([p.x, p.y, p.z], target, 1 - Math.exp(-dt * 2.5));
+          p.set(next[0], next[1], next[2]);
+          camera.lookAt(0, 0, 0);
+          controlsRef.current?.update();
+          invalidate();
+        } else if (wanted === undefined) {
+          state.lifted = false;
+        }
+        if (wanted !== undefined) state.lifted = true;
+      }
+    }
+
     const target = f?.beam ? 1 : 0;
     state.strength += (target - state.strength) * (1 - Math.exp(-dt * FADE_RATE));
-    if (f?.beam) state.lon = f.lon;
+    if (f?.beam && f.lon !== undefined) state.lon = f.lon;
 
     const m = globeMaterial.current;
     if (m) {

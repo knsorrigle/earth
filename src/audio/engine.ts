@@ -1,4 +1,8 @@
 import * as Tone from 'tone';
+import { encodeWav, joinChunks } from './wav';
+
+/** Longest recording kept in memory (stereo float32 ≈ 23 MB per minute at 48 kHz). */
+export const MAX_RECORD_SECONDS = 600;
 
 export type ChannelId = 'melody' | 'drone' | 'explore' | 'scanner' | 'duet';
 
@@ -74,6 +78,11 @@ export class AudioEngine {
   private cracklePanner!: Tone.Panner;
   private crackleRate = 0;
   private introGain: Tone.Gain | null = null;
+  private recTap: ScriptProcessorNode | null = null;
+  private recCtx: AudioContext | null = null;
+  private recChunks: Float32Array[][] = [];
+  private recFrames = 0;
+  private recording = false;
   private crackleTimer: ReturnType<typeof setTimeout> | undefined;
 
   /** True only once the whole graph exists (build() is async: reverb IR generation). */
@@ -385,6 +394,61 @@ export class AudioEngine {
     const now = Tone.now();
     this.introGain.gain.cancelScheduledValues(now);
     this.introGain.gain.rampTo(0, 0.25, now);
+  }
+
+  get isRecording(): boolean {
+    return this.recording;
+  }
+
+  /**
+   * Start capturing the final mix (after the limiter, before the listener's
+   * volume and mute) as raw PCM. Tone's context wrapper has no ScriptProcessor,
+   * so the mix is sent out as a MediaStream (uncompressed) and read by a small
+   * native AudioContext used only for capture.
+   */
+  async startRecording(): Promise<boolean> {
+    if (!this.ready || this.recording) return this.recording;
+    const raw = Tone.getContext().rawContext as unknown as AudioContext;
+    if (!this.recTap) {
+      if (typeof raw.createMediaStreamDestination !== 'function' || typeof window.AudioContext !== 'function') return false;
+      const out = raw.createMediaStreamDestination();
+      out.channelCount = 2;
+      this.clipper.connect(out);
+      const cap = new window.AudioContext({ sampleRate: raw.sampleRate });
+      if (typeof cap.createScriptProcessor !== 'function') return false;
+      const src = cap.createMediaStreamSource(out.stream);
+      const tap = cap.createScriptProcessor(4096, 2, 2);
+      tap.onaudioprocess = (e: AudioProcessingEvent) => {
+        if (!this.recording) return;
+        if (this.recFrames >= MAX_RECORD_SECONDS * cap.sampleRate) return;
+        const ib = e.inputBuffer;
+        const left = ib.getChannelData(0).slice(0);
+        const right = ib.numberOfChannels > 1 ? ib.getChannelData(1).slice(0) : left;
+        this.recChunks.push([left, right]);
+        this.recFrames += left.length;
+      };
+      src.connect(tap);
+      // The processor must reach a destination to run; its output buffer stays silent.
+      tap.connect(cap.destination);
+      this.recTap = tap;
+      this.recCtx = cap;
+    }
+    await this.recCtx?.resume();
+    this.recChunks = [];
+    this.recFrames = 0;
+    this.recording = true;
+    return true;
+  }
+
+  /** Stop and return the recording as a 16-bit stereo WAV. */
+  stopRecording(): { wav: Blob; seconds: number } | null {
+    if (!this.recording || !this.recTap) return null;
+    this.recording = false;
+    const rate = this.recCtx?.sampleRate ?? Tone.getContext().sampleRate;
+    const channels = joinChunks(this.recChunks, 2);
+    this.recChunks = [];
+    const seconds = channels[0].length / rate;
+    return { wav: new Blob([encodeWav(channels, rate)], { type: 'audio/wav' }), seconds };
   }
 
   /** Second duet voice (FM bell). */

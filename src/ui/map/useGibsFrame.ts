@@ -33,7 +33,7 @@ const LAND_RGB = [42, 52, 68];
 const SEA_RGB = [9, 14, 22];
 
 /** Load a static land/water basemap once, derive the land mask and a dark display version. */
-function getBasemap(path: string): Promise<Basemap> {
+export function getBasemap(path: string): Promise<Basemap> {
   let p = basemaps.get(path);
   if (!p) {
     p = (async () => {

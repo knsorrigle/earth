@@ -76,6 +76,7 @@ export function Sources({ datasets }: { datasets: Dataset[] }) {
             {d.source.subset ? `. ${d.source.subset}` : ''}
           </p>
           <p className="citation">{d.source.citation}</p>
+          {d.globeYears && <p className="citation">{d.globeYears.citation}</p>}
           {d.source.dataUrl && (
             <p className="muted small">
               Bundled file: <a href={d.source.dataUrl}>{d.source.dataUrl.split('/').pop()}</a>

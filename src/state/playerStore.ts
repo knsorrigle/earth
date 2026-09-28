@@ -47,6 +47,14 @@ export interface PlayerState {
   /** Shared by the map modes (Explore, Scanner): dataset, date and frame status. */
   explore: ExploreState;
   scan: ScanState;
+  /** Performance recording: when it started (ms), or null when not recording. */
+  recordingSince: number | null;
+  /** The last finished recording, ready to download. */
+  lastRecording: { url: string; name: string; seconds: number } | null;
+  /** Plain-words description of what the globe is showing ("Describe this frame"). */
+  globeDescription: string;
+  /** High-contrast display. */
+  highContrast: boolean;
   /** A record was chosen on the jukebox: the mode it opens should start playing once ready. */
   autoplay: 'timeline' | 'scanner' | null;
   /** What the globe HUD shows; published by the active mode. */
@@ -77,6 +85,9 @@ export interface PlayerState {
   setEar: (patch: Partial<{ difficulty: EarDifficulty; set: EarSet }>) => void;
   setHud: (hud: HudState | null) => void;
   setAutoplay: (a: 'timeline' | 'scanner' | null) => void;
+  setHighContrast: (on: boolean) => void;
+  setGlobeDescription: (text: string) => void;
+  setRecording: (patch: { recordingSince?: number | null; lastRecording?: { url: string; name: string; seconds: number } | null }) => void;
   setHudLegend: (open: boolean) => void;
   /** Load a different time series in Timeline mode (resets to its first year). */
   setDatasetId: (id: string) => void;
@@ -90,6 +101,23 @@ export interface PlayerState {
   setLegendOpen: (open: boolean) => void;
   announce: (text: string) => void;
   setCaption: (text: string) => void;
+}
+
+const CONTRAST_KEY = 'earth-jukebox:high-contrast';
+
+/** Saved choice, else the system's "increase contrast" preference. */
+function initialContrast(): boolean {
+  try {
+    const saved = window.localStorage.getItem(CONTRAST_KEY);
+    if (saved !== null) return saved === '1';
+  } catch {
+    /* storage unavailable */
+  }
+  try {
+    return window.matchMedia('(prefers-contrast: more)').matches;
+  } catch {
+    return false;
+  }
 }
 
 export const BPM_MIN = 40;
@@ -112,6 +140,10 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   hud: null,
   hudLegend: true,
   autoplay: null,
+  highContrast: initialContrast(),
+  recordingSince: null,
+  globeDescription: '',
+  lastRecording: null,
   datasetId: 'arctic-sea-ice-september',
   index: 0,
   isPlaying: false,
@@ -129,6 +161,16 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   setScan: (patch) => set((s) => ({ scan: { ...s.scan, ...patch } })),
   setHud: (hud) => set({ hud }),
   setAutoplay: (autoplay) => set({ autoplay }),
+  setRecording: (patch) => set(patch),
+  setGlobeDescription: (globeDescription) => set({ globeDescription }),
+  setHighContrast: (highContrast) => {
+    try {
+      window.localStorage.setItem(CONTRAST_KEY, highContrast ? '1' : '0');
+    } catch {
+      /* not remembered */
+    }
+    set({ highContrast });
+  },
   setHudLegend: (hudLegend) => set({ hudLegend }),
   setEar: (patch) => set((s) => ({ ear: { ...s.ear, ...patch } })),
   setDuet: (patch) => set((s) => ({ duet: { ...s.duet, ...patch }, index: 0, isPlaying: false })),

@@ -86,6 +86,25 @@ fades into the app, focus moving to the player. It is a modal dialog (`aria-moda
 shortcuts are blocked); **Esc** skips at any time and **Enter** skips while it plays. Not shown under reduced motion,
 and only once per browser session.
 
+## Globe across years, recording, high contrast, accessibility (Phase 6, final items)
+
+- **Globe texture across years (Timeline / Duet).** GIBS has no 1979–present layer for any of the three records, so
+  the globe uses the closest verified yearly layers, 15 September of each year, 2002–2025: sea ice concentration
+  (`GHRSST_L4_MUR25_Sea_Ice_Concentration`, over the land/water basemap) for sea ice, and sea surface temperature
+  anomaly (`GHRSST_L4_MUR25_Sea_Surface_Temperature_Anomalies`) for global temperature — labelled as the ocean part
+  only. Earlier years show 2002 and say so. The next two years are prefetched so playback morphs through them (shader
+  crossfade). CO₂ keeps the current map: OCO-2 only starts in 2014 and its daily frames are thin orbit tracks. The
+  camera rises to 55° for Arctic records so the ice is visible.
+- **Record to WAV (R).** The final mix (after the limiter, before the listener's volume/mute) is sent out as a
+  MediaStream and read losslessly in a small capture AudioContext, then encoded as 16-bit stereo PCM WAV
+  (`src/audio/wav.ts`, tested). Up to 10 minutes; the download link gets focus when you stop.
+- **High contrast (C).** Pure black, white text, stronger borders and focus rings; starts from the system's
+  "increase contrast" setting; remembered in this browser.
+- **Accessibility pass.** WCAG AA contrast is tested against the real CSS values in both themes
+  (`src/ui/contrast.test.ts`), which raised control borders to 3:1. Every sound has a visible caption (now also the
+  needle drop, Ear Test cues and intro swell, and on the globe itself). **Describe globe (G)** speaks what the globe
+  shows, with statistics for map frames. Globe controls live in a toolbar under the stage so nothing covers the globe.
+
 ## Modes
 
 - **Timeline:** one note per year; pitch = value; a hum tuned to the reference year.
@@ -151,4 +170,4 @@ Space/K play-pause · ←/→ year · Shift+←/→ 10 years · Home/End · +/�
 
 **Ear Test:** Enter start / next · Space play both clips · Shift+←/→ play one clip · ←/→ answer first / second · I repeat question · S score · L how it works
 
-**Everywhere:** 1 Timeline · 2 Explore · 3 Scanner · 4 Duet · 5 Ear Test · M mute
+**Everywhere:** 1 Timeline · 2 Explore · 3 Scanner · 4 Duet · 5 Ear Test · M mute · H read HUD · G describe globe · R record · C high contrast

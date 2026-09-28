@@ -22,6 +22,17 @@ export const arcticSeaIce: Dataset = {
     { t: 1, color: '#f4fbff' },
   ],
   compare: { subject: 'Arctic sea ice', higher: 'had more sea ice', lower: 'had less sea ice' },
+  // Verified in the GIBS EPSG:4326 capabilities (2026-09-28): daily 2002-09-01 to present, 15 Sep available every year.
+  globeYears: {
+    layer: 'GHRSST_L4_MUR25_Sea_Ice_Concentration',
+    monthDay: '09-15',
+    firstYear: 2002,
+    lastYear: 2025,
+    label: 'Sea ice concentration',
+    underlay: 'basemaps/OSM_Land_Water_Map.png',
+    citation:
+      'Globe: NASA GIBS layer GHRSST_L4_MUR25_Sea_Ice_Concentration (sea ice fraction in JPL MUR MEaSUREs Project, GHRSST L4 MUR 0.25° v4.2, https://doi.org/10.5067/GHM25-4FJ42), 15 September of each year, 2002–2025.',
+  },
   title: 'Arctic Sea Ice',
   unit: 'million km²',
   unitSpoken: 'million square kilometres',
@@ -118,6 +129,17 @@ export const globalTemperature: Dataset = {
     { t: 1, color: '#d7301f' },
   ],
   compare: { subject: 'global temperature', higher: 'was warmer', lower: 'was cooler' },
+  // No GISTEMP layer exists in GIBS; sea surface temperature anomaly is the closest yearly map (and says so).
+  globeYears: {
+    layer: 'GHRSST_L4_MUR25_Sea_Surface_Temperature_Anomalies',
+    monthDay: '09-15',
+    firstYear: 2002,
+    lastYear: 2025,
+    label: 'Sea surface temperature anomaly',
+    note: 'The ocean part of the picture only — the record you hear is land and ocean together.',
+    citation:
+      'Globe: NASA GIBS layer GHRSST_L4_MUR25_Sea_Surface_Temperature_Anomalies (JPL MUR MEaSUREs Project, GHRSST L4 MUR 0.25° v4.2, https://doi.org/10.5067/GHM25-4FJ42), 15 September of each year, 2002–2025.',
+  },
   title: 'Global Temperature',
   unit: '°C',
   unitSpoken: 'degrees Celsius',

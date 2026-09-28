@@ -246,6 +246,7 @@ export function useEarTest(sst: Dataset, frame: GibsFrame) {
       clearTimers();
       setPlaying(null);
       void ensureAudio().then(() => engine.playCue(right ? 'correct' : 'wrong'));
+      usePlayerStore.getState().setCaption(right ? '♪ rising two-note chime — correct' : '♪ soft falling two notes — not quite');
       // Only now, after answering, show where the answer is on the globe.
       const win = question.items[question.answer];
       if (question.kind === 'region' && win.box && frame.grid) {

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { usePlayerStore } from '../state/playerStore';
 import type { TimelineControls } from './usePlayer';
 import { hudSummary } from './hud/hudModel';
+import { toggleRecording } from './recording';
 
 const TEMPO_STEP = 10;
 
@@ -17,6 +18,9 @@ export const SHORTCUTS: { keys: string; action: string }[] = [
   { keys: 'M', action: 'Mute / unmute' },
   { keys: '1 – 5', action: 'Timeline / Explore / Scanner / Duet / Ear Test' },
   { keys: 'H', action: 'Read the globe HUD' },
+  { keys: 'G', action: 'Describe what the globe shows' },
+  { keys: 'C', action: 'High contrast on / off' },
+  { keys: 'R', action: 'Record / stop (saves a WAV)' },
 ];
 
 /**
@@ -54,6 +58,19 @@ export function useGlobalKeys() {
         case '4':
           if (s.mode !== 'duet') s.setMode('duet');
           s.announce('Duet mode');
+          break;
+        case 'g':
+        case 'G':
+          if (s.globeDescription) s.announce(s.globeDescription);
+          break;
+        case 'r':
+        case 'R':
+          void toggleRecording();
+          break;
+        case 'c':
+        case 'C':
+          s.setHighContrast(!s.highContrast);
+          s.announce(`High contrast ${!s.highContrast ? 'on' : 'off'}`);
           break;
         case 'h':
         case 'H': {

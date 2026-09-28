@@ -7,6 +7,8 @@ import { AdditiveBlending, BackSide, Color, DataTexture, type Group, ShaderMater
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { FollowController, ScanBeam } from './FollowAndBeam';
 import { RecordShelf } from './RecordShelf';
+import { useYearFrame } from './useYearFrame';
+import { sharedYears } from '../../mapping/duet';
 import { getDataset } from '../../data/registry';
 import { rotationToFaceLon } from '../../globe/geo';
 import { atmosphereFragment, atmosphereVertex, globeFragment, globeVertex } from '../../globe/shaders';
@@ -14,11 +16,17 @@ import { makeGlobeTexture } from '../../globe/texture';
 import { hasWebGL } from '../../globe/webgl';
 import { usePlayerStore } from '../../state/playerStore';
 import { useGibsFrame } from '../map/useGibsFrame';
-import { Hud } from '../hud/Hud';
+import { GlobeToolbar, Hud } from '../hud/Hud';
 import { Ripples } from './Ripples';
 import { SpectrumRing } from './SpectrumRing';
 
 const FADE_MS = 900;
+
+/** "2012-09-15" -> "15 September 2012". */
+function longDate(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+}
 const RIM = new Color('#7cc8ff');
 const BEAM = new Color('#ffd166');
 
@@ -178,6 +186,38 @@ export default function GlobeStage() {
   const shownDate = usePlayerStore((s) => s.explore.shownDate);
   const dataset = getDataset(datasetId);
   const frame = useGibsFrame(dataset, null);
+
+  // In Timeline / Duet, a record with a yearly GIBS layer drives the globe: it morphs year by year.
+  const mode = usePlayerStore((s) => s.mode);
+  const index = usePlayerStore((s) => s.index);
+  const timelineId = usePlayerStore((s) => s.datasetId);
+  const duet = usePlayerStore((s) => s.duet);
+  const { yearDataset, year } = useMemo(() => {
+    if (mode === 'timeline') {
+      const d = getDataset(timelineId);
+      return { yearDataset: d.globeYears ? d : null, year: d.timeSeries?.[Math.min(index, d.timeSeries.length - 1)]?.year ?? null };
+    }
+    if (mode === 'duet') {
+      const a = getDataset(duet.a);
+      const b = getDataset(duet.b);
+      const d = a.globeYears ? a : b.globeYears ? b : null;
+      const years = sharedYears(a.timeSeries ?? [], b.timeSeries ?? []);
+      return { yearDataset: d, year: years[Math.min(index, years.length - 1)] ?? null };
+    }
+    return { yearDataset: null, year: null };
+  }, [mode, timelineId, duet, index]);
+  const yearFrame = useYearFrame(yearDataset, year);
+  const yearCfg = yearDataset?.globeYears;
+  const shownYear = yearCfg && year !== null ? Math.max(yearCfg.firstYear, Math.min(yearCfg.lastYear, year)) : null;
+  const texBitmap = yearFrame?.bitmap ?? frame.bitmap;
+  const texUnderlay = yearFrame ? yearFrame.underlay : frame.underlay;
+  const globeCaption =
+    yearCfg && shownYear !== null
+      ? `Globe: ${yearCfg.label.toLowerCase()}, ${longDate(`${shownYear}-${yearCfg.monthDay}`)}` +
+        (shownYear !== year ? ` (NASA GIBS has no map for ${year}; nearest year shown)` : '') +
+        (yearFrame?.year === shownYear ? '' : ' — loading') +
+        (yearCfg.note ? `. ${yearCfg.note}` : '')
+      : `Globe: ${dataset.title.toLowerCase()}${shownDate ? `, ${longDate(shownDate)}` : ''}${frame.bitmap ? '' : ' — loading'}`;
   const reduced = useReducedMotion() ?? false;
   const [available, setAvailable] = useState(hasWebGL);
   const [rotating, setRotating] = useState(!reduced);
@@ -194,11 +234,20 @@ export default function GlobeStage() {
     if (reduced) setRotating(false);
   }, [reduced]);
 
+  // "Describe this frame": what the globe shows, in words (map statistics when it shows a map frame).
+  const setGlobeDescription = usePlayerStore((s) => s.setGlobeDescription);
+  useEffect(() => {
+    const what = globeCaption.replace(/^Globe: /, 'The globe shows ');
+    // Map frames add their statistics; yearly layers are described by the caption and the record itself.
+    setGlobeDescription(yearCfg ? `${what}.` : frame.grid ? `${what}. ${frame.description}` : `${what}.`);
+  }, [globeCaption, yearCfg, frame.grid, frame.description, setGlobeDescription]);
+
   if (!available) return null;
 
-  const label = `3D globe showing ${dataset.title}${shownDate ? ` on ${shownDate}` : ''}. Drag to turn it; scroll or pinch to zoom.`;
+  const label = `3D ${globeCaption.replace(/^Globe: /, 'globe showing ')}. Drag to turn it; scroll or pinch to zoom.`;
 
   return (
+    <>
     <section className="stage" aria-label="Globe">
       {/* The label lives on its own element: a role="img" wrapper would hide the record buttons from screen readers. */}
       <p className="sr-only">{label}</p>
@@ -226,7 +275,7 @@ export default function GlobeStage() {
             <Stars radius={80} depth={40} count={1400} factor={3} saturation={0} fade speed={0} />
             {/* Globe, ripples and beam turn together so the focus can face the viewer. */}
             <group ref={worldRef} rotation={[0, rotationToFaceLon(-40), 0]}>
-              <Globe bitmap={frame.bitmap} underlay={frame.underlay} reduced={reduced} materialRef={globeMaterial} />
+              <Globe bitmap={texBitmap} underlay={texUnderlay} reduced={reduced} materialRef={globeMaterial} />
               <ScanBeam beamRef={beamRef} />
             </group>
             <RecordShelf overlay={recordOverlay} reduced={reduced} />
@@ -264,26 +313,24 @@ export default function GlobeStage() {
         </GlobeBoundary>
       </div>
       <div ref={recordOverlay} className="record-overlay" role="group" aria-label="Record shelf: choose a dataset to play" />
-      <Hud
-        controls={
-          <>
-            <button type="button" className="btn small ghost" onClick={() => setRotating((r) => !r)} aria-pressed={!rotating}>
-              {rotating ? 'Pause rotation' : 'Resume rotation'}
-            </button>
-            {!reduced && (
-              <button
-                type="button"
-                className="btn small ghost"
-                onClick={() => setFollow((f) => !f)}
-                aria-pressed={follow}
-                title="Turn the globe to face the scanner beam, cursor or record location"
-              >
-                {follow ? 'Following' : 'Follow'}
-              </button>
-            )}
-          </>
-        }
-      />
+      <Hud />
     </section>
+    <GlobeToolbar caption={globeCaption}>
+      <button type="button" className="btn small ghost" onClick={() => setRotating((r) => !r)} aria-pressed={!rotating}>
+        {rotating ? 'Pause rotation' : 'Resume rotation'}
+      </button>
+      {!reduced && (
+        <button
+          type="button"
+          className="btn small ghost"
+          onClick={() => setFollow((f) => !f)}
+          aria-pressed={follow}
+          title="Turn the globe to face the scanner beam, cursor or record location"
+        >
+          {follow ? 'Following' : 'Follow'}
+        </button>
+      )}
+    </GlobeToolbar>
+    </>
   );
 }

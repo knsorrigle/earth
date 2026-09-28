@@ -3,7 +3,8 @@
   --surface: #0b1017;
   --surface-2: #111823;
   --line: #1f2b3b;
-  --line-strong: #2c3c52;
+  /* Borders of controls: ≥ 3:1 against the background (WCAG 1.4.11). */
+  --line-strong: #56667b;
   --text: #e9eef5;
   --muted: #a3b0c2;
   --ice: #8fd8ff;
@@ -1363,4 +1364,219 @@ kbd {
   .intro {
     display: none;
   }
+}
+.globe-caption {
+  position: absolute;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(560px, 70%);
+  margin: 0;
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+  background: rgba(5, 7, 11, 0.72);
+  padding: 3px 10px;
+  border-radius: 999px;
+  pointer-events: none;
+}
+@media (max-width: 760px) {
+  .globe-caption {
+    top: 108px;
+    max-width: 90%;
+  }
+}
+
+/* ── High contrast ─────────────────────────────── */
+.masthead-tools {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+:root[data-contrast='high'] {
+  --bg: #000;
+  --surface: #000;
+  --surface-2: #0b0b0b;
+  --line: #8fa2b8;
+  --line-strong: #e6edf5;
+  --text: #fff;
+  --muted: #e8eef5;
+  --ice: #b8e8ff;
+  --amber: #ffd98f;
+  --neg: #ffb3a6;
+  --pos: #a8f0c6;
+  --focus: #ffe066;
+  --voice-a: #b8e8ff;
+  --voice-b: #ffd98f;
+}
+:root[data-contrast='high'] body {
+  background: #000;
+}
+:root[data-contrast='high'] :focus-visible {
+  outline-width: 4px;
+  outline-offset: 3px;
+}
+:root[data-contrast='high'] .btn,
+:root[data-contrast='high'] select,
+:root[data-contrast='high'] .date-field input,
+:root[data-contrast='high'] .tab[aria-selected='true'] {
+  border-width: 2px;
+  border-color: var(--line-strong);
+}
+:root[data-contrast='high'] .btn.play {
+  background: #fff;
+  color: #000;
+  border-color: #fff;
+  box-shadow: none;
+}
+:root[data-contrast='high'] .panel,
+:root[data-contrast='high'] .chart,
+:root[data-contrast='high'] .map-figure,
+:root[data-contrast='high'] .stage {
+  border: 2px solid var(--line-strong);
+}
+:root[data-contrast='high'] .hud-corner,
+:root[data-contrast='high'] .globe-caption,
+:root[data-contrast='high'] .record-btn,
+:root[data-contrast='high'] .hud-controls .btn {
+  background: #000;
+  border: 1px solid #fff;
+  backdrop-filter: none;
+}
+:root[data-contrast='high'] .hud-groove {
+  stroke-width: 2.5;
+  opacity: 0.6;
+}
+:root[data-contrast='high'] .played .hud-groove,
+:root[data-contrast='high'] .hud-groove.played {
+  opacity: 1;
+}
+:root[data-contrast='high'] .chart .line-played,
+:root[data-contrast='high'] .chart .line-a,
+:root[data-contrast='high'] .chart .line-b {
+  stroke-width: 3.5;
+}
+:root[data-contrast='high'] .chart .line-future,
+:root[data-contrast='high'] .chart .line-dim {
+  opacity: 0.7;
+}
+:root[data-contrast='high'] .chart .grid {
+  stroke: #555;
+}
+:root[data-contrast='high'] .ref-line {
+  stroke-width: 2.5;
+}
+@media (max-width: 760px) {
+  .masthead-tools {
+    order: 3;
+    margin-left: 0;
+  }
+}
+.record-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rec-result {
+  display: inline-flex;
+  gap: 4px;
+}
+.rec-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--neg);
+  display: inline-block;
+}
+.btn.recording {
+  border-color: var(--neg);
+  color: var(--neg);
+}
+.btn.recording .rec-dot {
+  animation: rec-pulse 1s ease-in-out infinite;
+}
+@keyframes rec-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+a.btn {
+  text-decoration: none;
+}
+.hud-caption {
+  position: absolute;
+  left: 50%;
+  bottom: 56px;
+  transform: translateX(-50%);
+  max-width: min(520px, 46%);
+  margin: 0;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: rgba(5, 7, 11, 0.72);
+  font-size: 11.5px;
+  color: var(--text);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.intro-caption {
+  position: fixed;
+  bottom: 52px;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--text);
+}
+.ear-listen {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.ear-listen .caption {
+  margin: 0;
+}
+:root[data-contrast='high'] .hud-caption {
+  background: #000;
+  border: 1px solid #fff;
+}
+@media (max-width: 760px) {
+  .hud-caption {
+    max-width: 90%;
+    bottom: 54px;
+  }
+}
+
+/* ── Globe toolbar (under the stage) ─────────────────────────────── */
+.stage {
+  margin-bottom: 10px;
+}
+.stage-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 28px;
+}
+.stage-toolbar .globe-caption {
+  position: static;
+  transform: none;
+  max-width: none;
+  flex: 1 1 320px;
+  text-align: left;
+  background: none;
+  padding: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.stage-toolbar-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+:root[data-contrast='high'] .stage-toolbar .globe-caption {
+  border: 0;
+  background: none;
 }

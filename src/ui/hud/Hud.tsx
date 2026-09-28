@@ -6,10 +6,10 @@ import { Scrubber } from './Scrubber';
  * Corner readouts over the globe. Visual only (aria-hidden): the same facts
  * are announced by each mode, and H reads the whole HUD aloud.
  */
-export function Hud({ controls }: { controls: React.ReactNode }) {
+export function Hud() {
   const hud = usePlayerStore((s) => s.hud);
   const legendOpen = usePlayerStore((s) => s.hudLegend);
-  const setLegend = usePlayerStore((s) => s.setHudLegend);
+  const caption = usePlayerStore((s) => s.caption);
 
   return (
     <div className="hud">
@@ -47,21 +47,47 @@ export function Hud({ controls }: { controls: React.ReactNode }) {
             <span className="hud-k">place</span>
             <span className="hud-v strong">{hud.place || '—'}</span>
           </div>
+          {/* Visible caption of the latest sound, for anyone watching without audio. */}
+          {caption && <p className="hud-caption">{caption}</p>}
           {hud.scrub && <Scrubber scrub={hud.scrub} />}
         </div>
       )}
-      <div className="hud-controls">
-        {controls}
+    </div>
+  );
+}
+
+/**
+ * Globe controls, in a toolbar under the stage so nothing covers the globe:
+ * what the globe shows, then rotation, follow, legend, read HUD, describe globe.
+ */
+export function GlobeToolbar({ caption, children }: { caption: string; children: React.ReactNode }) {
+  const hud = usePlayerStore((s) => s.hud);
+  const legendOpen = usePlayerStore((s) => s.hudLegend);
+  const setLegend = usePlayerStore((s) => s.setHudLegend);
+  const globeDescription = usePlayerStore((s) => s.globeDescription);
+  return (
+    <div className="stage-toolbar" role="toolbar" aria-label="Globe controls">
+      <p className="globe-caption mono">{caption}</p>
+      <div className="stage-toolbar-buttons">
+        {children}
         {hud && (
-          <>
-            <button type="button" className="btn small ghost" aria-pressed={legendOpen} onClick={() => setLegend(!legendOpen)}>
-              {legendOpen ? 'Hide legend' : 'Show legend'}
-            </button>
-            <button type="button" className="btn small ghost" onClick={() => usePlayerStore.getState().announce(hudSummary(hud))}>
-              Read HUD <kbd>H</kbd>
-            </button>
-          </>
+          <button type="button" className="btn small ghost" aria-pressed={legendOpen} onClick={() => setLegend(!legendOpen)}>
+            {legendOpen ? 'Hide legend' : 'Show legend'}
+          </button>
         )}
+        {hud && (
+          <button type="button" className="btn small ghost" onClick={() => usePlayerStore.getState().announce(hudSummary(hud))}>
+            Read HUD <kbd>H</kbd>
+          </button>
+        )}
+        <button
+          type="button"
+          className="btn small ghost"
+          onClick={() => usePlayerStore.getState().announce(globeDescription)}
+          disabled={!globeDescription}
+        >
+          Describe globe <kbd>G</kbd>
+        </button>
       </div>
     </div>
   );

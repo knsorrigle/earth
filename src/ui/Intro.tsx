@@ -158,6 +158,11 @@ export function Intro({ onDone }: { onDone: () => void }) {
         </div>
       )}
       {phase === 'swell' && (
+        <p className="intro-caption" aria-hidden="true">
+          ♪ a low tone swells up
+        </p>
+      )}
+      {phase === 'swell' && (
         <p className="intro-skip">
           Press <kbd>Enter</kbd> or <kbd>Esc</kbd> to skip
         </p>

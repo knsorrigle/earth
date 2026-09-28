@@ -22,6 +22,7 @@ export async function playRecord(ds: Dataset, reduced: boolean): Promise<void> {
   } catch {
     /* ignore */
   }
+  s.setCaption(`♪ needle drop — ${ds.title}`);
   s.announce(`Needle down: ${ds.title}. ${ds.timeSeries ? 'Playing the timeline.' : 'Starting a scan of the map.'}`);
   const go = () => {
     const st = usePlayerStore.getState();

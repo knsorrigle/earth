@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Vector3 } from 'three';
 import { latLonToXYZ } from './geo';
-import { dampAngle, getGlobeFocus, meridianRotation, setGlobeFocus, wrapAngle, yawToFace } from './focus';
+import { dampAngle, easeElevation, getGlobeFocus, meridianRotation, setGlobeFocus, wrapAngle, yawToFace } from './focus';
 
 const Y = new Vector3(0, 1, 0);
 
@@ -49,5 +49,20 @@ describe('meridianRotation', () => {
       const q = new Vector3(...latLonToXYZ(30, lon));
       expect(p.distanceTo(q)).toBeLessThan(1e-9);
     }
+  });
+});
+
+describe('easeElevation', () => {
+  it('keeps distance and azimuth while changing elevation', () => {
+    const start: [number, number, number] = [1, 0.5, 3];
+    const r = Math.hypot(...start);
+    const az = Math.atan2(1, 3);
+    const end = easeElevation(start, 55, 1);
+    expect(Math.hypot(...end)).toBeCloseTo(r);
+    expect(Math.atan2(end[0], end[2])).toBeCloseTo(az);
+    expect((Math.asin(end[1] / r) * 180) / Math.PI).toBeCloseTo(55);
+    const half = easeElevation(start, 55, 0.5);
+    const e0 = (Math.asin(0.5 / r) * 180) / Math.PI;
+    expect((Math.asin(half[1] / r) * 180) / Math.PI).toBeCloseTo((e0 + 55) / 2);
   });
 });

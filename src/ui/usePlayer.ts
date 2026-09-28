@@ -87,11 +87,14 @@ export function usePlayer(dataset: Dataset) {
   // Timeline plays centred (Duet moves the melody voice left).
   useEffect(() => engine.setMelodyPan(0), []);
 
-  // Records measured at one place (Mauna Loa) turn the globe there; pan-Arctic and global ones don't.
+  // Records measured at one place (Mauna Loa) turn the globe there; high-latitude records
+  // (the Arctic) raise the camera so the yearly globe map shows the ice.
   useEffect(() => {
     const lon = dataset.place?.lon;
-    if (lon === undefined) return;
-    return setGlobeFocus(() => ({ lon }));
+    const lat = dataset.place?.lat;
+    const elevation = lat !== undefined && Math.abs(lat) >= 60 ? Math.sign(lat) * 55 : undefined;
+    if (lon === undefined && elevation === undefined) return;
+    return setGlobeFocus(() => ({ lon, elevation }));
   }, [dataset]);
 
   // Leaving Timeline mode: stop cleanly so nothing keeps sounding.

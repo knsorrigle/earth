@@ -24,6 +24,7 @@ export function EarTestView({ sst }: { sst: Dataset }) {
   const api = useEarTest(sst, frame);
   useEarKeys(api);
   const ear = usePlayerStore((s) => s.ear);
+  const caption = usePlayerStore((s) => s.caption);
   const setEar = usePlayerStore((s) => s.setEar);
   const { phase, question: q, score } = api;
   const revealed = phase === 'revealed' && q;
@@ -116,6 +117,7 @@ export function EarTestView({ sst }: { sst: Dataset }) {
               <button type="button" className="btn play" onClick={() => void api.playClips('both')}>
                 ▶ Listen <kbd>Space</kbd>
               </button>
+              <p className="caption">{caption}</p>
             </div>
 
             <div className="ear-choices" role="group" aria-label="Your answer">

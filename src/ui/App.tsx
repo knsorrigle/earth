@@ -10,8 +10,9 @@ import { ScannerView } from './scanner/ScannerView';
 import { DuetView } from './duet/DuetView';
 import { EarTestView } from './eartest/EarTestView';
 import { seaSurfaceTemperature } from '../data/registry';
-import { lazy, Suspense, useCallback, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { Intro } from './Intro';
+import { RecordControls } from './RecordControls';
 
 // three.js is large: load the globe after the accessible UI is up.
 const GlobeStage = lazy(() => import('./globe/GlobeStage'));
@@ -32,6 +33,11 @@ export function App() {
   const duet = usePlayerStore((s) => s.duet);
   useGlobalKeys();
   const [introDone, setIntroDone] = useState(false);
+  const highContrast = usePlayerStore((s) => s.highContrast);
+  const setHighContrast = usePlayerStore((s) => s.setHighContrast);
+  useEffect(() => {
+    document.documentElement.dataset.contrast = highContrast ? 'high' : '';
+  }, [highContrast]);
   const onIntroDone = useCallback(() => setIntroDone(true), []);
 
   const onTabKey = (e: React.KeyboardEvent, i: number) => {
@@ -56,6 +62,18 @@ export function App() {
           <div className="brand">
             <span className="brand-mark" aria-hidden="true" />
             <h1>Earth Jukebox</h1>
+          </div>
+          <div className="masthead-tools">
+            <RecordControls />
+            <button
+              type="button"
+              className="btn small ghost"
+              aria-pressed={highContrast}
+              onClick={() => setHighContrast(!highContrast)}
+              title="High contrast (C)"
+            >
+              High contrast <kbd aria-hidden="true">C</kbd>
+            </button>
           </div>
           <div className="tabs" role="tablist" aria-label="Mode">
             {MODES.map((m, i) => (

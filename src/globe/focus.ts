@@ -5,9 +5,26 @@ import { rotationToFaceLon } from './geo';
  * provider (like the note bus) because it is read every animation frame.
  */
 export interface GlobeFocus {
-  lon: number;
+  /** Longitude to turn toward the viewer (omit to leave the globe's spin alone). */
+  lon?: number;
+  /** Camera elevation to ease to, in degrees (e.g. 55 to look down on the Arctic). */
+  elevation?: number;
   /** Draw the scanner beam along this meridian. */
   beam?: boolean;
+}
+
+/** Default camera elevation in degrees (matches the stage's initial camera). */
+export const DEFAULT_ELEVATION = 13;
+
+/** Camera position at the same distance and azimuth, moved `k` of the way to `targetDeg` elevation. */
+export function easeElevation(pos: [number, number, number], targetDeg: number, k: number): [number, number, number] {
+  const [x, y, z] = pos;
+  const r = Math.hypot(x, y, z);
+  const az = Math.atan2(x, z);
+  const el = Math.asin(Math.max(-1, Math.min(1, y / r)));
+  const next = el + ((targetDeg * Math.PI) / 180 - el) * k;
+  const h = r * Math.cos(next);
+  return [h * Math.sin(az), r * Math.sin(next), h * Math.cos(az)];
 }
 
 type Provider = () => GlobeFocus | null;

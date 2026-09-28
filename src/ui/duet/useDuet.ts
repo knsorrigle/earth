@@ -99,8 +99,10 @@ export function useDuet(dsA: Dataset, dsB: Dataset) {
   // Face a record's location if either has one.
   useEffect(() => {
     const lon = dsA.place?.lon ?? dsB.place?.lon;
-    if (lon === undefined) return;
-    return setGlobeFocus(() => ({ lon }));
+    const arctic = [dsA, dsB].some((d) => (d.place?.lat ?? 0) >= 60);
+    const elevation = arctic ? 55 : undefined;
+    if (lon === undefined && elevation === undefined) return;
+    return setGlobeFocus(() => ({ lon, elevation }));
   }, [dsA, dsB]);
 
   // Mallet to the left while in Duet; centred again on the way out.

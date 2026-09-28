@@ -80,6 +80,24 @@ export interface Dataset {
    * used for ripples. Map layers use their GIBS colormap instead.
    */
   palette?: { t: number; color: string }[];
+  /**
+   * A GIBS layer the globe shows year by year while this time series plays
+   * (the globe texture morphs across years). Verified in the GIBS capabilities.
+   */
+  globeYears?: {
+    layer: string;
+    /** Day of the year to show, MM-DD. */
+    monthDay: string;
+    firstYear: number;
+    lastYear: number;
+    /** Plain words for the caption: "Sea ice concentration". */
+    label: string;
+    /** Why this layer relates to the record, when it is not the same quantity. */
+    note?: string;
+    /** Static basemap under sparse layers (sea ice is drawn only where there is ice). */
+    underlay?: string;
+    citation: string;
+  };
   /** Words for Ear Test questions: "Which year had more sea ice?" */
   compare?: {
     /** Lower-case subject: "Arctic sea ice". */
