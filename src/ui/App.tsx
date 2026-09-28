@@ -10,7 +10,8 @@ import { ScannerView } from './scanner/ScannerView';
 import { DuetView } from './duet/DuetView';
 import { EarTestView } from './eartest/EarTestView';
 import { seaSurfaceTemperature } from '../data/registry';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useCallback, useState } from 'react';
+import { Intro } from './Intro';
 
 // three.js is large: load the globe after the accessible UI is up.
 const GlobeStage = lazy(() => import('./globe/GlobeStage'));
@@ -30,6 +31,8 @@ export function App() {
   const exploreId = usePlayerStore((s) => s.explore.datasetId);
   const duet = usePlayerStore((s) => s.duet);
   useGlobalKeys();
+  const [introDone, setIntroDone] = useState(false);
+  const onIntroDone = useCallback(() => setIntroDone(true), []);
 
   const onTabKey = (e: React.KeyboardEvent, i: number) => {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
@@ -46,7 +49,9 @@ export function App() {
         Skip to player
       </a>
       <LiveRegion />
-      <div className="shell">
+      <Intro onDone={onIntroDone} />
+      {/* While the intro dialog is open the app behind it is inert (not focusable, not read). */}
+      <div className="shell" inert={!introDone}>
         <header className="masthead">
           <div className="brand">
             <span className="brand-mark" aria-hidden="true" />

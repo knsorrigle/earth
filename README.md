@@ -77,6 +77,15 @@ the front; labels of records behind the globe are hidden but stay in the Tab ord
 (thump + filtered crackle), flies the disc to the centre, then opens its track: time series start in Timeline, maps start a
 Scanner sweep (the globe crossfades to the new map). Reduced motion: no orbiting or flight; the choice is instant.
 
+## Intro (Phase 6, step 7)
+
+Browsers only allow sound after a user gesture, so the intro opens on a black screen with **Begin with sound** (focused)
+and **Skip intro**. Begin starts a low swelling tone (A1/A2 drone with a soft fifth, filter opening); the globe emerges
+through a circular window whose radius follows the tone's actual gain, then the title appears at the peak and the dialog
+fades into the app, focus moving to the player. It is a modal dialog (`aria-modal`, the app behind is `inert`, app
+shortcuts are blocked); **Esc** skips at any time and **Enter** skips while it plays. Not shown under reduced motion,
+and only once per browser session.
+
 ## Modes
 
 - **Timeline:** one note per year; pitch = value; a hum tuned to the reference year.

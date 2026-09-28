@@ -73,6 +73,7 @@ export class AudioEngine {
   private crackleFilter!: Tone.Filter;
   private cracklePanner!: Tone.Panner;
   private crackleRate = 0;
+  private introGain: Tone.Gain | null = null;
   private crackleTimer: ReturnType<typeof setTimeout> | undefined;
 
   /** True only once the whole graph exists (build() is async: reverb IR generation). */
@@ -342,6 +343,48 @@ export class AudioEngine {
     const times = Array.from({ length: 5 }, () => t + 0.05 + Math.random() * 0.4).sort((a, b) => a - b);
     times.forEach((ct, i) => crackle.triggerAttackRelease(0.008, ct + i * 0.001, 0.4 + Math.random() * 0.6));
     window.setTimeout(() => [thump, hiss, crackle, hissFilter, out].forEach((n) => n.dispose()), 1500);
+  }
+
+  /**
+   * Intro: a low tone that swells up over `rise` seconds and fades over
+   * `fall`. The visuals follow introLevel(), so picture and sound stay locked.
+   */
+  playIntroSwell(rise = 3.2, fall = 2.6): void {
+    if (!this.ready) return;
+    const t = Tone.now() + 0.05;
+    const gain = new Tone.Gain(0).connect(this.master);
+    const filter = new Tone.Filter({ type: 'lowpass', frequency: 160, rolloff: -24, Q: 0.6 }).connect(gain);
+    const low = new Tone.OmniOscillator({ type: 'fatsine', count: 3, spread: 18, frequency: 55, volume: -6 }).connect(filter);
+    const mid = new Tone.Oscillator({ type: 'sine', frequency: 110, volume: -12 }).connect(filter);
+    const fifth = new Tone.Oscillator({ type: 'triangle', frequency: 164.81, volume: -24 }).connect(filter);
+    [low, mid, fifth].forEach((o) => o.start(t));
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(1, t + rise);
+    gain.gain.setValueAtTime(1, t + rise);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + rise + fall);
+    filter.frequency.setValueAtTime(160, t);
+    filter.frequency.exponentialRampToValueAtTime(1500, t + rise);
+    filter.frequency.exponentialRampToValueAtTime(400, t + rise + fall);
+    this.introGain = gain;
+    const end = t + rise + fall + 0.1;
+    [low, mid, fifth].forEach((o) => o.stop(end));
+    window.setTimeout(() => {
+      [low, mid, fifth, filter, gain].forEach((n) => n.dispose());
+      if (this.introGain === gain) this.introGain = null;
+    }, (rise + fall + 0.5) * 1000);
+  }
+
+  /** Current intro swell level, 0..1 (0 when no intro is playing). */
+  introLevel(): number {
+    return this.introGain ? this.introGain.gain.value : 0;
+  }
+
+  /** Skip: fade the swell out quickly. */
+  stopIntroSwell(): void {
+    if (!this.introGain) return;
+    const now = Tone.now();
+    this.introGain.gain.cancelScheduledValues(now);
+    this.introGain.gain.rampTo(0, 0.25, now);
   }
 
   /** Second duet voice (FM bell). */
