@@ -1,5 +1,7 @@
 # Earth Jukebox
 
+**Live: https://earth-jukebox-chi.vercel.app**
+
 NASA Space Apps project: listen to NASA Earth data. The sound carries the data (you can hear trends by ear), and the whole app works with a screen reader or with your eyes closed.
 
 ```bash
