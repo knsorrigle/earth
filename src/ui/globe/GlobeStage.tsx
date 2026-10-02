@@ -8,6 +8,7 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { FollowController, ScanBeam } from './FollowAndBeam';
 import { RecordShelf } from './RecordShelf';
 import { useYearFrame } from './useYearFrame';
+import { AUDIO_PROFILE } from '../../audio/deviceProfile';
 import { sharedYears } from '../../mapping/duet';
 import { getDataset } from '../../data/registry';
 import { rotationToFaceLon } from '../../globe/geo';
@@ -221,8 +222,9 @@ export default function GlobeStage() {
   const reduced = useReducedMotion() ?? false;
   const [available, setAvailable] = useState(hasWebGL);
   const [rotating, setRotating] = useState(!reduced);
-  const [bloom, setBloom] = useState(true);
-  const [dpr, setDpr] = useState(1.5);
+  // Phones: lower resolution and no bloom, so the globe leaves CPU/GPU time for the audio.
+  const [bloom, setBloom] = useState(!AUDIO_PROFILE.constrained);
+  const [dpr, setDpr] = useState(AUDIO_PROFILE.constrained ? 1 : 1.5);
   const [follow, setFollow] = useState(true);
   const worldRef = useRef<Group>(null);
   const beamRef = useRef<Group>(null);
@@ -262,7 +264,7 @@ export default function GlobeStage() {
             fallback={null}
           >
             <PerformanceMonitor
-              onChange={({ factor }) => setDpr(Math.round((1 + factor) * 10) / 10)}
+              onChange={({ factor }) => setDpr(Math.round((1 + factor * (AUDIO_PROFILE.constrained ? 0.5 : 1)) * 10) / 10)}
               onDecline={() => setBloom(false)}
               flipflops={3}
               onFallback={() => {

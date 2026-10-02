@@ -1,5 +1,13 @@
 import * as Tone from 'tone';
 import { encodeWav, joinChunks } from './wav';
+import { AUDIO_PROFILE } from './deviceProfile';
+
+// Phones: replace Tone's default (interactive, tiny buffers) context with a
+// "playback" one before anything else uses Tone, so the audio thread has
+// enough headroom not to crackle. Desktop keeps the default.
+if (AUDIO_PROFILE.constrained && typeof window !== 'undefined' && typeof window.AudioContext === 'function') {
+  Tone.setContext(new Tone.Context({ latencyHint: AUDIO_PROFILE.latencyHint, lookAhead: AUDIO_PROFILE.lookAhead }));
+}
 
 /** Longest recording kept in memory (stereo float32 ≈ 23 MB per minute at 48 kHz). */
 export const MAX_RECORD_SECONDS = 600;
@@ -101,20 +109,20 @@ export class AudioEngine {
   private async build(): Promise<void> {
     await Tone.start();
     // Tighter scheduling so the visual playhead and notes feel locked together.
-    Tone.getContext().lookAhead = 0.05;
+    Tone.getContext().lookAhead = AUDIO_PROFILE.lookAhead;
 
     // A WaveShaper only maps inputs in [-1, 1] (beyond that it holds the curve
     // ends), so pre-scale by 1/CLIP_RANGE and expand inside the curve: the soft
     // curve then covers overshoots up to +12 dBFS, and anything hotter sits at
     // softClip(CLIP_RANGE) ≈ ceiling.
     this.clipper = new Tone.WaveShaper((v) => softClip(v * CLIP_RANGE), 8192).toDestination();
-    this.clipper.oversample = '2x';
+    this.clipper.oversample = AUDIO_PROFILE.clipperOversample;
     this.clipPreGain = new Tone.Gain(1 / CLIP_RANGE).connect(this.clipper);
     this.limiter = new Tone.Limiter(-3).connect(this.clipPreGain);
     this.fft = new Tone.FFT({ size: 1024, smoothing: 0.4 });
     this.limiter.connect(this.fft);
     this.master = new Tone.Gain(1).connect(this.limiter);
-    this.reverb = new Tone.Reverb({ decay: 4.5, preDelay: 0.03, wet: 0.28 }).connect(this.master);
+    this.reverb = new Tone.Reverb({ decay: AUDIO_PROFILE.reverbDecay, preDelay: 0.03, wet: 0.28 }).connect(this.master);
     await this.reverb.ready;
 
     this.channels = {
@@ -147,16 +155,15 @@ export class AudioEngine {
       envelope: { attack: 0.012, decay: 0.4, sustain: 0.22, release: 1.6 },
       volume: 0,
     }).connect(this.melodyFilter);
-    this.melody.maxPolyphony = 10;
+    this.melody.maxPolyphony = AUDIO_PROFILE.melodyPolyphony;
 
     // Drone: a slowly beating low fat-sine plus a pure tone at the reference pitch.
     this.droneGain = new Tone.Gain(0).connect(this.channels.drone);
     this.droneFilter = new Tone.Filter({ type: 'lowpass', frequency: 900, rolloff: -24 }).connect(this.droneGain);
-    this.droneLow = new Tone.OmniOscillator({ type: 'fatsine', count: 3, spread: 10, frequency: 110, volume: -4 });
+    this.droneLow = new Tone.OmniOscillator({ type: 'fatsine', count: AUDIO_PROFILE.fatCount, spread: 10, frequency: 110, volume: -4 });
     this.droneLow.connect(this.droneFilter);
     this.droneHigh = new Tone.Oscillator({ type: 'sine', frequency: 220, volume: -10 }).connect(this.droneFilter);
-    this.droneLow.start();
-    this.droneHigh.start();
+    // Drone oscillators start when the drone is wanted and stop once faded out (see setDroneActive).
 
     // Explore: a sustained, slightly chorused tone that glides between values.
     this.explorePanner = new Tone.Panner(0).connect(this.channels.explore);
@@ -171,8 +178,8 @@ export class AudioEngine {
     this.landPanner = new Tone.Panner(0).connect(this.channels.explore);
     this.landGain = new Tone.Gain(0).connect(this.landPanner);
     this.landFilter = new Tone.Filter({ type: 'lowpass', frequency: 650, rolloff: -24 }).connect(this.landGain);
+    // Started only while the land wash is audible (see exploreLand), so it costs nothing otherwise.
     this.landNoise = new Tone.Noise({ type: 'pink', volume: -10 }).connect(this.landFilter);
-    this.landNoise.start();
 
     // Scanner: soft harp-like plucks; all notes of one step share the sweep's pan.
     this.scanPanner = new Tone.Panner(0).connect(this.channels.scanner);
@@ -182,7 +189,7 @@ export class AudioEngine {
       envelope: { attack: 0.004, decay: 0.5, sustain: 0.06, release: 0.9 },
       volume: -2,
     }).connect(this.scanFilter);
-    this.scanSynth.maxPolyphony = 24;
+    this.scanSynth.maxPolyphony = AUDIO_PROFILE.scanPolyphony;
 
     // Fire crackle: very short band-passed noise bursts at random intervals.
     this.cracklePanner = new Tone.Panner(0).connect(this.channels.explore);
@@ -247,7 +254,7 @@ export class AudioEngine {
   exploreTone(freq: number, pan: number, velocity = 0.6): void {
     if (!this.ready) return;
     const now = Tone.now();
-    this.landGain.gain.rampTo(0, 0.08, now);
+    this.landOff(0.08);
     this.explorePanner.pan.rampTo(pan, 0.08, now);
     if (this.exploreSounding) {
       this.exploreSynth.frequency.rampTo(freq, 0.06, now);
@@ -257,9 +264,23 @@ export class AudioEngine {
     }
   }
 
+  private landOn = false;
+
+  /** Fade the land wash out and stop its noise source afterwards. */
+  private landOff(fadeSeconds: number): void {
+    const now = Tone.now();
+    this.landGain.gain.rampTo(0, fadeSeconds, now);
+    this.landOn = false;
+    window.setTimeout(() => {
+      if (!this.landOn && this.ready && this.landNoise.state === 'started') this.landNoise.stop();
+    }, (fadeSeconds + 0.2) * 1000);
+  }
+
   /** Cursor is over land / no data. */
   exploreLand(pan: number): void {
     if (!this.ready) return;
+    this.landOn = true;
+    if (this.landNoise.state !== 'started') this.landNoise.start();
     const now = Tone.now();
     if (this.exploreSounding) {
       this.exploreSynth.triggerRelease(now);
@@ -277,7 +298,7 @@ export class AudioEngine {
       this.exploreSynth.triggerRelease(now);
       this.exploreSounding = false;
     }
-    this.landGain.gain.rampTo(0, 0.15, now);
+    this.landOff(0.15);
   }
 
   /** Fade explore sound out (cursor left the map or stopped moving). */
@@ -290,7 +311,7 @@ export class AudioEngine {
       this.exploreSynth.triggerRelease(now);
       this.exploreSounding = false;
     }
-    this.landGain.gain.rampTo(0, fadeSeconds, now);
+    this.landOff(fadeSeconds);
   }
 
   playNote(note: NoteSpec, time?: number): void {
@@ -363,7 +384,7 @@ export class AudioEngine {
     const t = Tone.now() + 0.05;
     const gain = new Tone.Gain(0).connect(this.master);
     const filter = new Tone.Filter({ type: 'lowpass', frequency: 160, rolloff: -24, Q: 0.6 }).connect(gain);
-    const low = new Tone.OmniOscillator({ type: 'fatsine', count: 3, spread: 18, frequency: 55, volume: -6 }).connect(filter);
+    const low = new Tone.OmniOscillator({ type: 'fatsine', count: AUDIO_PROFILE.fatCount, spread: 18, frequency: 55, volume: -6 }).connect(filter);
     const mid = new Tone.Oscillator({ type: 'sine', frequency: 110, volume: -12 }).connect(filter);
     const fifth = new Tone.Oscillator({ type: 'triangle', frequency: 164.81, volume: -24 }).connect(filter);
     [low, mid, fifth].forEach((o) => o.start(t));
@@ -478,8 +499,20 @@ export class AudioEngine {
   setDroneActive(active: boolean, rampSeconds = 1.2): void {
     if (!this.ready || active === this.droneActive) return;
     this.droneActive = active;
+    if (active) {
+      if (this.droneLow.state !== 'started') this.droneLow.start();
+      if (this.droneHigh.state !== 'started') this.droneHigh.start();
+    }
     this.droneGain.gain.cancelScheduledValues(Tone.now());
     this.droneGain.gain.rampTo(active ? 1 : 0, rampSeconds);
+    if (!active) {
+      // Silent oscillators still cost CPU (a lot, on phones): stop them once the fade is done.
+      window.setTimeout(() => {
+        if (this.droneActive || !this.ready) return;
+        if (this.droneLow.state === 'started') this.droneLow.stop();
+        if (this.droneHigh.state === 'started') this.droneHigh.stop();
+      }, (rampSeconds + 0.2) * 1000);
+    }
   }
 
   setChannelMuted(id: ChannelId, muted: boolean): void {
